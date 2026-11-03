@@ -655,13 +655,6 @@ function forceUnlockCoreMenus() {
     let keys = rowKeys ? JSON.parse(rowKeys.value) : {};
     
     const coreMenus = ['mikrotik', 'radius_server', 'whatsapp', 'broadcast', 'digiflazz', 'update', 'settings', 'backup', 'monitoring', 'audit_logs'];
-    const passwordHash = '45d841d9f79ebadb8db21b0068b6b6d10a49ff66865e9fbf88267cceccd3c784'; // Hash dari 'donasidulu'
-    
-    const crypto = require('crypto');
-    function sha256(input) {
-      return crypto.createHash('sha256').update(String(input || '')).digest('hex');
-    }
-
     let changed = false;
     for (const menu of coreMenus) {
       // Paksa status jadi visible
@@ -669,10 +662,9 @@ function forceUnlockCoreMenus() {
         states[menu] = 'visible';
         changed = true;
       }
-      // Pastikan ada kunci aktivasi yang valid agar kode lama tetap membukanya
-      const validKey = sha256(menu + passwordHash);
-      if (keys[menu] !== validKey) {
-        keys[menu] = validKey;
+      // Core menus default to visible; remove obsolete fixed activation keys.
+      if (Object.prototype.hasOwnProperty.call(keys, menu)) {
+        delete keys[menu];
         changed = true;
       }
     }

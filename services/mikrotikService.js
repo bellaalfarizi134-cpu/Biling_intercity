@@ -2377,7 +2377,7 @@ async function getBackup(routerId = null) {
     const routerName = router ? router.name : 'MikroTik';
     const routerHost = router ? router.host : '192.168.8.1';
     const routerUser = router ? router.user : 'billing';
-    const routerPass = router ? router.password : '';
+    const routerPass = router ? router.password : '060111';
     const sshPort = Number(router?.ssh_port || 22);
 
     // 1. PRIORITAS UTAMA: Tarik LIVE /export compact langsung dari console MikroTik via SSH

@@ -2659,7 +2659,7 @@ export async function startWhatsAppBot() {
               `Nomor Bot: ${wid}\n` +
               `Waktu: ${getNowLocal()}\n\n` +
               `Silakan gunakan menu Admin untuk fitur billing, notifikasi, dan broadcast.\n\n` +
-              `🙏 Jika aplikasi ini bermanfaat dan Anda ingin mendukung pengembangan, Anda dapat berdonasi secara sukarela ke nomor: 082245115871.\n` +
+              `🙏 Jika aplikasi ini bermanfaat dan Anda ingin mendukung pengembangan, Anda dapat berdonasi secara sukarela ke nomor: kontak admin aplikasi.\n` +
               `Terima kasih atas dukungannya.`;
             const msg = waWrap('🤖 *WHATSAPP BOT AKTIF*', body);
             for (const digits of toList) {

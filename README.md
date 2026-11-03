@@ -148,10 +148,18 @@ Sistem manajemen ISP yang mengintegrasikan **penagihan**, **GenieACS**, **OLT (S
 
 ```bash
 git clone https://github.com/bellaalfarizi134-cpu/Biling_intercity.git
-cd billing-rtrw
-cp env-example.txt .env
+cd Biling_intercity
+cp .env.example .env
 npm install
 ```
+
+### Keamanan konfigurasi
+
+- Jangan commit settings.json, .env, database, data pelanggan, sesi WhatsApp, atau file upload. File tersebut diabaikan oleh .gitignore.
+- Gunakan nilai unik untuk MY_WEBHOOK_SECRET.
+- Kunci enkripsi dibuat otomatis dan disimpan di data/settings-master.key, atau tetapkan SETTINGS_MASTER_KEY sendiri. Simpan backup kunci tersebut dengan aman.
+- SETTINGS_LEGACY_ENCRYPTION_KEY hanya untuk migrasi instalasi lama; hapus setelah data berhasil disimpan ulang.
+- FEATURE_PASSWORD_HASH bersifat opsional untuk fitur kunci menu. Jangan gunakan password akun admin.
 
 ### Konfigurasi
 
@@ -288,7 +296,7 @@ Jika Anda mendapat error ini di server produksi, artinya database belum memiliki
 **Opsi 1: Jalankan Script Fix (Recommended)**
 
 ```bash
-cd /path/to/billing-rtrw
+cd /path/to/Biling_intercity
 bash scripts/fix-database.sh
 ```
 
@@ -310,7 +318,7 @@ npm restart
 **Opsi 3: Manual Verification**
 
 ```bash
-cd /path/to/billing-rtrw
+cd /path/to/Biling_intercity
 node scripts/verify-database.js
 ```
 
@@ -351,8 +359,4 @@ Fork, buat branch fitur, lalu kirim Pull Request.
 **ISC** — lihat berkas `LICENSE`.
 
 Dibuat untuk operasional ISP lokal & RTRW-Net.  
-Managed by [Irfan](https://github.com/bellaalfarizi134-cpu)
-
-## Info & donasi
-
-082245115871 — https://wa.me/6282245115871
+Managed by [Irfan](https://github.com/bellaalfarizi134-cpu)\n

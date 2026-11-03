@@ -335,7 +335,7 @@ function requireSidebarMenuAccess(menuKey) {
     }
 
     if (access.reason === 'locked') {
-      req.session._msg = { type: 'error', text: `Menu "${access.menu.labelDefault}" terkunci. Hubungi ${sidebarMenuSvc.FEATURE_CONTACT_PHONE} untuk mendapatkan password.` };
+      req.session._msg = { type: 'error', text: `Menu "${access.menu.labelDefault}" terkunci. Hubungi ${sidebarMenuSvc.getFeatureContactPhone()} untuk mendapatkan password.` };
       return res.redirect('/admin/sidebar-settings');
     }
 

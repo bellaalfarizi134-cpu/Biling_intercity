@@ -284,7 +284,7 @@ function ensureDefaultSettings() {
     const defaultSettings = {
       // RADIUS Server settings (ditambahkan untuk update dari GitHub)
       radius_enabled: '0',
-      radius_secret: '',
+      radius_secret: 'secret123',
       radius_auth_port: '1812',
       radius_acct_port: '1813',
       radius_isolir_action: 'pool',

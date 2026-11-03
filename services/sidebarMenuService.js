@@ -2,8 +2,8 @@ const crypto = require('crypto');
 const { getSetting, getSettings, saveSettings } = require('../config/settingsManager');
 const { getAppSetting, saveAppSetting } = require('../config/database');
 
-const FEATURE_PASSWORD_HASH = '45d841d9f79ebadb8db21b0068b6b6d10a49ff66865e9fbf88267cceccd3c784';
-const FEATURE_CONTACT_PHONE = '082245115871';
+const FEATURE_PASSWORD_HASH = String(process.env.FEATURE_PASSWORD_HASH || '').trim();
+const FEATURE_CONTACT_PHONE = String(process.env.FEATURE_CONTACT_PHONE || '').trim() || 'administrator sistem';
 
 function getFeaturePasswordHash() {
   return getSetting('feature_password_hash', FEATURE_PASSWORD_HASH);
@@ -156,10 +156,11 @@ function getStoredMenuStates() {
 
     // Jika menu aslinya LOCKED tapi diubah jadi VISIBLE/HIDDEN, cek kunci aktivasinya
     if (defaultState === STATE_LOCKED && normalized !== STATE_LOCKED) {
-      const expectedKey = sha256(menu.key + getFeaturePasswordHash());
+      const configuredPasswordHash = getFeaturePasswordHash();
+      const expectedKey = configuredPasswordHash ? sha256(menu.key + configuredPasswordHash) : null;
       const providedKey = activationKeys[menu.key];
 
-      if (providedKey !== expectedKey) {
+      if (!expectedKey || providedKey !== expectedKey) {
         // Kunci tidak cocok! Kembalikan ke LOCKED
         stateMap[menu.key] = STATE_LOCKED;
         continue;
@@ -180,9 +181,9 @@ function saveMenuStates(stateMap) {
     const defaultState = DEFAULT_MENU_STATES[key] || STATE_VISIBLE;
 
     // Jika menu yang aslinya LOCKED diaktifkan (jadi visible/hidden), generate kunci
-    if (defaultState === STATE_LOCKED && newState !== STATE_LOCKED) {
+    if (defaultState === STATE_LOCKED && newState !== STATE_LOCKED && passwordHash) {
       activationKeys[key] = sha256(key + passwordHash);
-    } else if (newState === STATE_LOCKED) {
+    } else if (newState === STATE_LOCKED || (defaultState === STATE_LOCKED && !passwordHash)) {
       // Jika dikunci kembali, hapus kuncinya
       delete activationKeys[key];
     }
@@ -276,7 +277,8 @@ function getMenuDefinition(key) {
 }
 
 function isFeaturePasswordValid(password) {
-  return sha256(password) === getFeaturePasswordHash();
+  const configuredHash = getFeaturePasswordHash();
+  return Boolean(configuredHash) && sha256(password) === configuredHash;
 }
 
 function evaluateMenuAccess(menuKey, session) {

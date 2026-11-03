@@ -1,44 +1,41 @@
-# Runtime configuration and secrets
+node_modules/
 .env
 .env.*
 !.env.example
 settings.json
 settings.json.*
-*.pem
-*.key
-.npmrc
-
-# Runtime databases and sessions
 *.db
 *.db-*
 *.sqlite
 *.sqlite-*
-database/
+*.sqlite3
+*.sqlite3-*
+database/*.json
 data/
 storage/
 logs/
-auth_info_baileys/
-
-# Customer uploads and generated installers
-public/uploads/
-public/downloads/*.apk
-*.apk
-*.aab
-
-# Dependencies, backups, and generated artifacts
-node_modules/
 backups/
 backup-aman/
-.build-teknisi/
+auth_info_baileys/
+public/uploads/
+public/downloads/*.apk
+public/downloads/*.aab
 *.bak*
-*.backup*
 *.before-*
+*.backup*
+*.broken*
+*.corrupt*
+*.recovered*
+*.malformed*
+*.wal
+*.shm
+*.zip
+*.tar.gz\n
+# Local backups and operational artifacts
 *.sebelum*
 *.removed-*
-*.broken*
-*.malformed*
-*.korup*
-*.recovered*
-*.tar.gz
+*.disabled-*
+*.old-*
 *.tmp
 *.log
+.build*/
