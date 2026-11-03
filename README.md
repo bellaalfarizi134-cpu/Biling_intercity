@@ -4,8 +4,8 @@
 
 Sistem manajemen ISP yang mengintegrasikan **penagihan**, **GenieACS**, **OLT (SNMP)**, **MikroTik** (PPPoE/hotspot/voucher), **peta jaringan (GIS)**, **inventaris**, **WhatsApp/Telegram**, dan **multi-portal** (admin, teknisi, pelanggan, agen) dalam satu platform.
 
-[![GitHub license](https://img.shields.io/github/license/Irfan/billing-rtrw)](https://github.com/bellaalfarizi134-cpu/Biling_intercity/blob/main/LICENSE)
-[![GitHub stars](https://img.shields.io/github/stars/Irfan/billing-rtrw)](https://github.com/bellaalfarizi134-cpu/Biling_intercity/stargazers)
+[![GitHub license](https://img.shields.io/github/license/bellaalfarizi134-cpu/Biling_intercity)](https://github.com/bellaalfarizi134-cpu/Biling_intercity/blob/main/LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/bellaalfarizi134-cpu/Biling_intercity)](https://github.com/bellaalfarizi134-cpu/Biling_intercity/stargazers)
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen)](https://nodejs.org/)
 
 ---
@@ -238,7 +238,7 @@ Aplikasi Android resmi **Irfan** adalah aplikasi native multifungsi untuk semua 
 1. **Langsung dari Web Server**:
    Akses link berikut melalui browser di smartphone Anda:
    ```text
-   https://app.Irfan.com/downloads/billing-rtrw.apk
+   https://DOMAIN-ANDA/downloads/billing-rtrw.apk
    ```
    *(Ganti `[IP-SERVER]` dan `3001` sesuai IP/Domain dan Port server billing Anda)*.
 2. **File Lokal di Repository**:
