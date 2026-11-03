@@ -1,6 +1,6 @@
 # RTRWNET Management & Billing System
 
-![ISP Management Hero](public/img/hero.png)
+![Tampilan Portal Teknisi - Binding ONT dan Monitoring ONU](public/img/technician-preview.png)
 
 Sistem manajemen ISP yang mengintegrasikan **penagihan**, **GenieACS**, **OLT (SNMP)**, **MikroTik** (PPPoE/hotspot/voucher), **peta jaringan (GIS)**, **inventaris**, **WhatsApp/Telegram**, dan **multi-portal** (admin, teknisi, pelanggan, agen) dalam satu platform.
 
