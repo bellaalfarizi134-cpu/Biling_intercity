@@ -1,0 +1,1458 @@
+<!-- views/tech/map.ejs -->
+<%- include('partials/header') %>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<style>
+  /* Peta jaringan teknisi: latar putih, teks hitam, panel kontras tinggi */
+  #map { height: calc(100vh - 145px); border-radius: 12px; margin-top: 10px; z-index: 1; border: 1px solid #dbe5f2; background: #ffffff; }
+  .map-info { background: #ffffff; color: #111827; border-color: #dbe5f2; box-shadow: 0 4px 15px rgba(30,64,120,.07); }
+  .tech-stats .tsc { background: #ffffff; border-color: #dbe5f2; }
+  .tech-stats .tsc .val { color: #111827; }
+  .tech-stats .tsc .lbl { color: #475569; font-size: 11px; }
+  .legend-grid .lc { background: #ffffff; border-color: #dbe5f2; }
+  .legend-grid .lc span { color: #111827; font-size: 12px; }
+  .leaflet-control-layers, .leaflet-control-layers-expanded { color: #111827; background: #ffffff; border-color: #cbd5e1; }
+  .leaflet-control-layers label { color: #111827; }
+  .leaflet-control-attribution { color: #334155; background: rgba(255,255,255,.9); }
+  .leaflet-control-attribution a { color: #1d4ed8; }
+  .leaflet-tooltip { color: #111827; background: #ffffff; border-color: #cbd5e1; }
+  .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: #ffffff; color: #111827; }
+  .leaflet-popup-content { color: #111827; }
+  .popup-dark { color: #111827; }
+  .popup-dark h6 { color: #111827; border-bottom-color: #dbe5f2; }
+  .popup-dark div { color: #334155; }
+  .popup-dark b { color: #111827; }
+  .map-info { background: #1e293b; padding: 12px; border-radius: 12px; margin-bottom: 10px; font-size: 13px; border: 1px solid #334155; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+  
+  /* Tech Stats */
+  .tech-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
+  .tsc { background: #1e293b; border: 1px solid #334155; padding: 10px; border-radius: 10px; text-align: center; }
+  .tsc .val { display: block; font-size: 16px; font-weight: 700; color: #f8fafc; }
+  .tsc .lbl { display: block; font-size: 9px; color: #94a3b8; text-transform: uppercase; font-weight: 600; margin-top: 2px; }
+  .tsc-w { border-bottom: 3px solid #f59e0b; }
+  .tsc-s { border-bottom: 3px solid #10b981; }
+  .tsc-d { border-bottom: 3px solid #ef4444; }
+
+  /* Tech Legend Grid */
+  .legend-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
+  .lc { background: #1e293b; border: 1px solid #334155; padding: 8px; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .lc i { width: 10px; height: 10px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.5); }
+  .lc span { font-size: 11px; font-weight: 700; color: #f1f5f9; }
+
+  .marker-odp { color: #f59e0b; font-size: 16px; text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff; }
+  .marker-cust-active { color: #3b82f6; font-size: 18px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff; }
+  .marker-cust-suspended { color: #ef4444; font-size: 18px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff; }
+  .tech-network-badge { width:32px;height:32px;border-radius:11px;display:flex;align-items:center;justify-content:center;color:#fff;border:2px solid #fff;box-shadow:0 3px 10px rgba(15,23,42,.28);font-size:17px; }
+  .tech-network-odp { background:linear-gradient(145deg,#fbbf24,#d97706); }
+  .tech-network-odc { background:linear-gradient(145deg,#22d3ee,#0e7490); }
+  .tech-network-olt { background:linear-gradient(145deg,#60a5fa,#1d4ed8); }
+  .tech-network-router { background:linear-gradient(145deg,#a78bfa,#6d28d9); }
+  .tech-device-marker-wrap { width:190px; display:flex; flex-direction:column; align-items:center; text-align:center; overflow:visible; }
+  .tech-device-marker-label { display:block; max-width:185px; margin-top:2px; padding:1px 4px; border-radius:4px; background:rgba(15,23,42,.92); color:#f8fafc; font-size:10px; line-height:1.2; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-shadow:0 1px 2px #000; pointer-events:none; }
+  .tech-device-marker-sub { display:block; max-width:188px; margin-top:1px; color:#e2e8f0; font-size:8px; font-weight:700; line-height:1.15; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-shadow:-1px -1px 0 #0f172a,1px -1px 0 #0f172a,-1px 1px 0 #0f172a,1px 1px 0 #0f172a; pointer-events:none; }
+  .tech-customer-marker { width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border:2px solid #fff;border-radius:50%;background:#f59e0b;color:#fff;font-size:15px;box-shadow:0 3px 9px rgba(15,23,42,.3); }
+  .tech-customer-marker.pppoe-online { background:#2563eb; outline:2px solid #93c5fd; outline-offset:2px; }
+  .tech-customer-marker.pppoe-offline { background:#dc2626; outline:2px solid #fca5a5; outline-offset:2px; }
+  .tech-customer-marker.pppoe-unknown { background:#d97706; outline:2px solid #fcd34d; outline-offset:2px; }
+  .tech-customer-marker.pppoe-isolated { background:#475569; outline:2px solid #cbd5e1; outline-offset:2px; }
+  .tech-customer-icon-wrap { width:180px; display:flex; flex-direction:column; align-items:center; text-align:center; overflow:visible; }
+  .tech-customer-name { display:block; width:max-content; max-width:178px; margin-top:2px; padding:1px 4px; border-radius:4px 4px 0 0; background:rgba(15,23,42,.94); color:#f8fafc; font-size:9px; line-height:1.2; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-shadow:0 1px 2px #000; border:1px solid rgba(148,163,184,.55); border-bottom:0; pointer-events:none; }
+  .tech-customer-pppoe-status { display:block; width:max-content; max-width:178px; padding:1px 5px; border-radius:0 0 4px 4px; font-size:8px; line-height:1.25; font-weight:900; letter-spacing:.15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; border:1px solid transparent; pointer-events:none; }
+  .tech-customer-pppoe-status.pppoe-online { background:#dbeafe; color:#1d4ed8; border-color:#93c5fd; }
+  .tech-customer-pppoe-status.pppoe-offline { background:#fee2e2; color:#991b1b; border-color:#fca5a5; }
+  .tech-customer-pppoe-status.pppoe-unknown { background:#fef3c7; color:#92400e; border-color:#fcd34d; }
+  .tech-isolated-skull { display:inline-block;font-size:25px;line-height:30px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
+  .popup-dark { color: #1e293b; }
+  .popup-dark h6 { margin: 0 0 5px 0; border-bottom: 1px solid #ddd; padding-bottom: 5px; font-weight: bold; }
+  .btn-wa { background: #25d366; color: white; border: none; padding: 5px 10px; border-radius: 5px; text-decoration: none; display: inline-block; margin-top: 8px; font-size: 12px; }
+
+  /* Flowing line animation */
+  @keyframes flow {
+    from { stroke-dashoffset: 20; }
+    to { stroke-dashoffset: 0; }
+  }
+  .flowing-line { animation: flow 1s linear infinite; }
+  .flowing-line-inactive { animation:none; }
+  .cable-status-legend { display:flex; flex-wrap:wrap; gap:6px 12px; padding:9px 10px; margin:8px 0; background:#fff; border:1px solid #dbe5f2; border-radius:9px; }
+  .cable-status-legend span { display:inline-flex; align-items:center; gap:5px; color:#334155; font-size:10px; font-weight:800; }
+  .cable-status-legend i { display:inline-block; width:18px; height:4px; border-radius:4px; }
+  .cable-status-legend small { flex-basis:100%; color:#475569; font-size:10px; font-weight:700; }
+  .cable-length-summary { border:1px solid #bfdbfe; background:#eff6ff; border-radius:9px; padding:8px 10px; margin:0 0 8px; color:#1e3a8a; font-size:11px; font-weight:850; line-height:1.45; }
+  .cable-length-summary small { display:block; margin-top:3px; color:#475569; font-size:9px; font-weight:650; line-height:1.45; }
+  @media (prefers-reduced-motion: reduce) { .flowing-line, .flowing-line-inactive { animation:none !important; } }
+
+  /* Fullscreen peta teknisi di bawah header. */
+  .tech-map-screen { position:fixed; top:calc(56px + env(safe-area-inset-top)); right:0; bottom:0; left:0; z-index:2; overflow:hidden; background:#e2e8f0; overscroll-behavior:contain; }
+  .tech-map-screen #map { position:absolute !important; inset:0 !important; width:100% !important; height:100% !important; margin:0 !important; border:0 !important; border-radius:0 !important; z-index:1 !important; background:#e2e8f0 !important; touch-action:none; overscroll-behavior:contain; -webkit-user-select:none; user-select:none; }
+  /* Panel info mengambang di sisi kiri, tetap menempel pada viewport peta saat digeser/zoom. */
+  .tech-map-overlay { position:absolute; top:12px; bottom:12px; left:12px; right:auto; width:310px; max-width:calc(100vw - 24px); margin:0; z-index:850; display:flex; flex-direction:column; border:1px solid rgba(148,163,184,.75); border-radius:14px; background:rgba(255,255,255,.96); box-shadow:0 8px 28px rgba(15,23,42,.2); color:#0f172a; overflow:hidden; backdrop-filter:blur(8px); }
+  .tech-map-overlay-head { display:flex; align-items:center; gap:8px; padding:8px 9px; min-height:48px; flex-shrink:0; border-bottom:1px solid rgba(203,213,225,.65); }
+  .tech-map-overlay-title { min-width:0; display:flex; flex-direction:column; align-items:flex-start; gap:3px; flex:1; font-size:13px; font-weight:900; }
+  .tech-map-overlay-title > span { display:block; }
+  .tech-map-overlay-title > span i { color:#2563eb; font-size:16px; margin-right:5px; }
+  .tech-map-overlay-title small { min-width:0; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:10px; color:#475569; font-weight:700; margin:0; }
+  .tech-map-panel-toggle { border:1px solid #cbd5e1; border-radius:9px; background:#f8fafc; color:#0f172a; padding:7px 9px; font-size:12px; font-weight:800; flex-shrink:0; }
+  .tech-map-panel-details { padding:9px; flex:1; min-height:0; max-height:none; overflow-y:auto; overscroll-behavior:contain; }
+  /* Saat ringkas, panel menjadi satu tombol kecil supaya peta tidak tertutup. */
+  .tech-map-overlay.is-collapsed { top:auto; bottom:12px; left:12px; width:auto; border:0; border-radius:50%; background:transparent; box-shadow:none; overflow:visible; backdrop-filter:none; }
+  .tech-map-overlay.is-collapsed .tech-map-overlay-head { border-bottom:0; padding:0; min-height:0; gap:0; }
+  .tech-map-overlay.is-collapsed .tech-map-overlay-title { display:none; }
+  .tech-map-overlay.is-collapsed .tech-map-panel-toggle { width:44px; height:44px; padding:0; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:18px; background:#fff; box-shadow:0 3px 12px rgba(15,23,42,.24); }
+  .tech-map-overlay.is-collapsed .tech-map-panel-details { display:none; }
+  .tech-pppoe-summary { margin:0 0 8px; padding:8px; border:1px solid #dbe5f2; border-radius:9px; background:#f8fafc; }
+  .tech-pppoe-summary-title { margin-bottom:6px; color:#0f172a; font-size:11px; font-weight:900; }
+  .tech-pppoe-summary-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:4px; }
+  .tech-pppoe-summary-grid span { display:flex; flex-direction:column; gap:2px; padding:5px 4px; border-radius:6px; font-size:9px; line-height:1.2; font-weight:800; text-align:center; }
+  .tech-pppoe-summary-grid b { font-size:15px; }
+  .tech-pppoe-summary-grid .summary-online { background:#dbeafe; color:#1d4ed8; }
+  .tech-pppoe-summary-grid .summary-offline { background:#fee2e2; color:#991b1b; }
+  .tech-pppoe-summary-grid .summary-unknown { background:#fef3c7; color:#92400e; }
+  .tech-pppoe-summary small { display:block; margin-top:5px; color:#475569; font-size:9px; line-height:1.35; font-weight:700; }
+  .tech-map-panel-details .tech-stats { margin:0 0 7px; gap:6px; }
+  .tech-map-panel-details .tsc { padding:6px 4px; border-radius:8px; }
+  .tech-map-panel-details .tsc .val { font-size:14px; }
+  .tech-map-panel-details .tsc .lbl { font-size:9px !important; }
+  .tech-map-panel-details .legend-grid { gap:5px; margin-bottom:7px; }
+  .tech-map-panel-details .lc { justify-content:flex-start; padding:6px; gap:6px; }
+  .tech-map-panel-details .lc span { font-size:10px !important; }
+  .tech-map-panel-details .cable-status-legend { gap:5px 9px; padding:7px; margin:0 0 7px; }
+  .tech-map-panel-details .map-info { padding:7px 9px; margin:0; font-size:11px; }
+  /* Pencarian disimpan sebagai satu tombol agar peta tetap leluasa saat tidak dipakai. */
+  .tech-map-customer-search { position:absolute; top:105px; right:10px; width:min(360px,calc(100vw - 20px)); z-index:900; box-sizing:border-box; }
+  .tech-map-customer-search.is-closed { width:44px; }
+  .tech-map-search-toggle { display:flex; align-items:center; justify-content:center; width:44px; height:44px; margin-left:auto; padding:0; border:1px solid #dbe5f2; border-radius:50%; background:rgba(255,255,255,.98); color:#2563eb; box-shadow:0 4px 14px rgba(15,23,42,.22); font-size:19px; cursor:pointer; }
+  .tech-map-search-toggle:focus-visible { outline:3px solid rgba(37,99,235,.35); outline-offset:2px; }
+  .tech-map-search-row { display:flex; align-items:center; gap:7px; padding:7px 9px; border:1px solid #cbd5e1; border-radius:12px; background:rgba(255,255,255,.98); box-shadow:0 4px 16px rgba(15,23,42,.2); }
+  .tech-map-customer-search.is-closed .tech-map-search-row,
+  .tech-map-customer-search.is-closed .tech-map-search-results { display:none !important; }
+  .tech-map-search-row > i { color:#2563eb; font-size:16px; flex-shrink:0; }
+  #techMapCustomerSearchInput { width:100%; min-width:0; border:0; outline:0; background:transparent; color:#0f172a; font-size:13px; font-weight:650; }
+  #techMapCustomerSearchInput::placeholder { color:#64748b; font-weight:550; }
+  #techMapCustomerSearchClear { width:28px; height:28px; flex-shrink:0; border:0; border-radius:8px; background:#eff6ff; color:#1d4ed8; font-weight:900; }
+  .tech-map-search-results { margin-top:6px; max-height:min(45vh,360px); overflow-y:auto; border:1px solid #cbd5e1; border-radius:12px; background:#fff; box-shadow:0 8px 24px rgba(15,23,42,.22); }
+  .tech-map-search-results[hidden] { display:none !important; }
+  .tech-map-search-result { display:block; width:100%; padding:10px 12px; border:0; border-bottom:1px solid #e2e8f0; background:#fff; color:#0f172a; text-align:left; cursor:pointer; }
+  .tech-map-search-result:last-child { border-bottom:0; }
+  .tech-map-search-result:hover, .tech-map-search-result:focus { outline:0; background:#eff6ff; }
+  .tech-map-search-result strong { display:block; font-size:12px; font-weight:850; overflow-wrap:anywhere; }
+  .tech-map-search-result small { display:block; margin-top:3px; color:#475569; font-size:10px; line-height:1.4; overflow-wrap:anywhere; }
+  .tech-map-search-empty { padding:12px; color:#475569; font-size:12px; font-weight:650; }
+  .tech-map-load-error { position:absolute; z-index:700; top:12px; left:330px; right:12px; max-width:600px; background:#fff7ed; color:#9a3412; border:1px solid #fdba74; border-radius:10px; padding:12px; font-size:13px; font-weight:700; }
+  /* Matikan pull-to-refresh browser hanya pada halaman peta; drag tetap ditangani Leaflet. */
+  html:has(#techMapScreen), body:has(#techMapScreen) { overscroll-behavior: none; overscroll-behavior-y: none; }
+  body:has(#techMapScreen) { overflow:hidden; }
+  body:has(#techMapScreen) .container.py-3 { padding:0 !important; margin:0 !important; max-width:none !important; }
+  @media (max-width:480px) {
+    .tech-map-overlay { top:8px; bottom:8px; left:8px; right:auto; width:min(270px,78vw); max-width:calc(100vw - 16px); border-radius:11px; }
+    .tech-map-overlay.is-collapsed { top:auto; bottom:8px; left:8px; width:auto; }
+    .tech-map-overlay-head { min-height:44px; padding:6px 8px; }
+    .tech-map-overlay-title { font-size:12px; gap:4px; }
+    .tech-map-overlay-title small { max-width:100%; font-size:9px; }
+    .tech-map-panel-details { max-height:none; padding:8px; }
+    .tech-map-panel-details .legend-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .tech-map-load-error { top:64px; left:8px; right:8px; }
+  }
+
+  /* Override final agar seluruh panel peta benar-benar putih dan teks gelap. */
+  #map { border-color: #dbe5f2 !important; background: #fff !important; }
+  .map-info, .tech-stats .tsc, .legend-grid .lc { background: #fff !important; color: #111827 !important; border-color: #dbe5f2 !important; box-shadow: 0 4px 15px rgba(30,64,120,.07); }
+  .tech-stats .tsc .val { color: #111827 !important; }
+  .tech-stats .tsc .lbl { color: #475569 !important; font-size: 11px !important; }
+  .legend-grid .lc span { color: #111827 !important; font-size: 12px !important; }
+  .leaflet-control-layers, .leaflet-control-layers-expanded, .leaflet-control-layers label { color: #111827 !important; background: #fff !important; border-color: #cbd5e1 !important; }
+  .leaflet-control-attribution { color: #334155 !important; background: rgba(255,255,255,.94) !important; }
+  .leaflet-control-attribution a { color: #1d4ed8 !important; }
+  .leaflet-tooltip, .leaflet-popup-content-wrapper, .leaflet-popup-tip { color: #111827 !important; background: #fff !important; border-color: #cbd5e1 !important; }
+  .leaflet-popup-content, .popup-dark, .popup-dark h6, .popup-dark b { color: #111827 !important; }
+  .popup-dark h6 { border-bottom-color: #dbe5f2 !important; }
+  .popup-dark div { color: #334155 !important; }
+</style>
+
+<div id="techMapScreen" class="tech-map-screen">
+  <div id="map"></div>
+  <div id="techMapCustomerSearch" class="tech-map-customer-search is-closed" role="search" aria-label="Cari pelanggan pada peta teknisi">
+    <button id="techMapCustomerSearchToggle" class="tech-map-search-toggle" type="button" aria-label="Buka pencarian pelanggan" aria-expanded="false" title="Cari pelanggan">
+      <i class="bi bi-search" aria-hidden="true"></i>
+    </button>
+    <div class="tech-map-search-row">
+      <i class="bi bi-search" aria-hidden="true"></i>
+      <input id="techMapCustomerSearchInput" type="search" autocomplete="off" spellcheck="false" placeholder="Cari nama pelanggan atau SN ONU…" aria-label="Nama pelanggan, PPPoE, nomor HP, atau SN ONU">
+      <button id="techMapCustomerSearchClear" type="button" aria-label="Hapus pencarian" title="Hapus pencarian">×</button>
+    </div>
+    <div id="techMapCustomerSearchResults" class="tech-map-search-results" role="listbox" aria-label="Hasil pencarian pelanggan" hidden></div>
+  </div>
+  <div id="techMapLoadError" class="tech-map-load-error" role="status" style="display:none">Pustaka peta gagal dimuat. Periksa koneksi internet lalu muat ulang halaman.</div>
+  <section id="techMapOverlay" class="tech-map-overlay is-collapsed">
+    <div class="tech-map-overlay-head">
+      <div class="tech-map-overlay-title"><span><i class="bi bi-map-fill"></i> Peta Jaringan</span><small id="techTopologyLiveStatus">Memeriksa sesi PPPoE…</small></div>
+      <button type="button" id="toggleTechMapPanel" class="tech-map-panel-toggle" aria-label="Buka info peta" title="Buka info peta" aria-expanded="false"><i class="bi bi-info-circle"></i></button>
+    </div>
+    <div id="techMapPanelDetails" class="tech-map-panel-details">
+      <div class="tech-stats">
+        <div class="tsc tsc-w"><span class="val"><%= odps.length %></span><span class="lbl">Total ODP</span></div>
+        <div class="tsc tsc-s"><span class="val"><%= customers.filter(c => c.status === 'active').length %></span><span class="lbl">Aktif</span></div>
+        <div class="tsc tsc-d"><span class="val"><%= customers.filter(c => c.status !== 'active').length %></span><span class="lbl">Isolir</span></div>
+      </div>
+      <div id="techPppoeStatusSummary" class="tech-pppoe-summary" role="status" aria-live="polite">
+        <div class="tech-pppoe-summary-title">Status sesi PPPoE</div>
+        <div class="tech-pppoe-summary-grid">
+          <span class="summary-online">Online <b id="techPppoeOnlineCount">—</b></span>
+          <span class="summary-offline">Offline <b id="techPppoeOfflineCount">—</b></span>
+          <span class="summary-unknown">Belum diketahui <b id="techPppoeUnknownCount">—</b></span>
+        </div>
+        <small id="techPppoeStatusMeta">Memuat sesi PPPoE dari MikroTik…</small>
+      </div>
+      <div id="techCableLengthSummary" class="cable-length-summary" role="status" aria-live="polite">
+        <span id="techCableLengthValue">Menghitung total panjang rute…</span>
+        <small id="techCableLengthMeta">Semua garis mengikuti jaringan jalan yang tersedia; titik manual hanya menjadi waypoint pengarah rute.</small>
+        <small>Panjang berdasarkan estimasi rute jalan, bukan hasil ukur serat optik.</small>
+      </div>
+      <div class="legend-grid">
+        <div class="lc"><i style="background:#f59e0b"></i><span>ODP</span></div>
+        <div class="lc"><i style="background:#3b82f6"></i><span>Pelanggan online</span></div>
+        <div class="lc"><i style="background:#ef4444"></i><span>Offline / jalur putus</span></div>
+        <div class="lc"><i style="background:#2563eb"></i><span>OLT</span></div>
+        <div class="lc"><i style="background:#0891b2"></i><span>ODC</span></div>
+        <div class="lc"><i style="background:#7c3aed"></i><span>MikroTik</span></div>
+      </div>
+      <div class="cable-status-legend" aria-label="Warna jalur kabel">
+        <span><i style="background:#2563eb"></i>Drop FO: ODP → ONT/Pelanggan</span>
+        <span><i style="background:#f59e0b"></i>Distribusi FO</span>
+        <span><i style="background:#0891b2"></i>Feeder PON: OLT → ODC</span>
+        <span><i style="background:#7c3aed"></i>Backhaul/uplink: MikroTik ↔ OLT</span>
+        <span><i style="background:#ef4444"></i>Alarm: semua pelanggan terpetakan di ODP offline</span>
+        <small>Ikon isolir menandakan layanan pelanggan dibatasi; garis drop tidak ditampilkan. Status pelanggan online membantu diagnosis, tetapi bukan pengukuran fisik kabel.</small>
+      </div>
+      <div class="map-info"><i class="bi bi-info-circle me-1"></i>Ketuk ikon ODP untuk melihat PON, kapasitas, port terpakai, dan sisa port.</div>
+    </div>
+  </section>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script id="settings-data" type="application/json"><%- JSON.stringify(settings) %></script>
+<script>
+  if (typeof L === 'undefined' || typeof L.map !== 'function') {
+    const loadError = document.getElementById('techMapLoadError');
+    if (loadError) loadError.style.display = 'block';
+  } else {
+  const panel = document.getElementById('techMapOverlay');
+  const panelToggle = document.getElementById('toggleTechMapPanel');
+  if (panel && panelToggle) panelToggle.addEventListener('click', () => {
+    const collapsed = panel.classList.toggle('is-collapsed');
+    panelToggle.setAttribute('aria-expanded', String(!collapsed));
+    panelToggle.innerHTML = collapsed ? '<i class="bi bi-info-circle"></i>' : '<i class="bi bi-chevron-up"></i> Tutup';
+    panelToggle.setAttribute('aria-label', collapsed ? 'Buka info peta' : 'Tutup info peta');
+    panelToggle.title = collapsed ? 'Buka info peta' : 'Tutup info peta';
+    setTimeout(() => { if (window.techNetworkMap && window.techNetworkMap.invalidateSize) window.techNetworkMap.invalidateSize(); }, 100);
+  });
+  const appSettings = JSON.parse(document.getElementById('settings-data').textContent);
+  const officeCoords = {
+    lat: parseFloat(appSettings.office_lat) || -6.200000,
+    lng: parseFloat(appSettings.office_lng) || 106.816666
+  };
+
+  // Initialize Map
+  const map = L.map('map', { dragging: true, touchZoom: true, doubleClickZoom: true, zoomControl: true })
+    .setView([officeCoords.lat, officeCoords.lng], 13);
+  window.techNetworkMap = map;
+
+  // HP: jangan hitung ulang ukuran peta saat jari masih menggeser peta.
+  let techMapResizeFrame = 0;
+  let techMapIsDragging = false;
+  let techMapResizePending = false;
+  const scheduleTechMapResize = () => {
+    if (techMapIsDragging) {
+      techMapResizePending = true;
+      return;
+    }
+    if (techMapResizeFrame) return;
+    techMapResizeFrame = window.requestAnimationFrame(() => {
+      techMapResizeFrame = 0;
+      if (techMapIsDragging) {
+        techMapResizePending = true;
+        return;
+      }
+      if (window.techNetworkMap && window.techNetworkMap.invalidateSize) {
+        window.techNetworkMap.invalidateSize({ pan: false, animate: false, debounceMoveend: true });
+      }
+    });
+  };
+  map.on('dragstart', () => { techMapIsDragging = true; });
+  map.on('dragend', () => {
+    techMapIsDragging = false;
+    if (techMapResizePending) {
+      techMapResizePending = false;
+      window.setTimeout(scheduleTechMapResize, 120);
+    }
+  });
+  const techMapContainer = document.getElementById('map');
+  if (techMapContainer && 'ResizeObserver' in window) {
+    const techMapResizeObserver = new ResizeObserver(scheduleTechMapResize);
+    techMapResizeObserver.observe(techMapContainer);
+  }
+  window.addEventListener('resize', scheduleTechMapResize, { passive: true });
+  window.addEventListener('orientationchange', () => window.setTimeout(scheduleTechMapResize, 180), { passive: true });
+  window.addEventListener('pageshow', () => window.setTimeout(scheduleTechMapResize, 150), { passive: true });
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) window.setTimeout(scheduleTechMapResize, 150);
+  });
+  // Ukuran peta dipantau oleh ResizeObserver dan window resize; hindari event visualViewport
+  // karena toolbar browser HP dapat memicu sinkronisasi berulang saat peta sedang digeser.
+  map.whenReady(() => window.setTimeout(scheduleTechMapResize, 100));
+
+  // Layers
+  const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OSM'
+  });
+
+  const googleHybrid = L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+    maxZoom: 20,
+    subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+    attribution: '© Google Sat'
+  });
+
+  // OSM sebagai dasar paling kompatibel; satelit tetap bisa dipilih dari kontrol layer.
+  osm.addTo(map);
+
+  const baseMaps = {
+    "Satelit": googleHybrid,
+    "Standard": osm
+  };
+
+  L.control.layers(baseMaps).addTo(map);
+
+  // Data Injection with safety
+  let customers = [];
+  let odps = [];
+  let odcs = [];
+  try {
+    customers = <%- JSON.stringify(customers).replace(/<\/script/g, '<\\/script').replace(/<!--/g, '<\\!--') %>;
+    odcs = <%- JSON.stringify(odcs || []).replace(/</g, '\\u003c') %>;
+    odps = <%- JSON.stringify(odps).replace(/<\/script/g, '<\\/script').replace(/<!--/g, '<\\!--') %>;
+  } catch (e) {
+    console.error("Data mapping error:", e);
+  }
+
+  const escapeOdcHtml = value => String(value ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+  const buildTechDeviceIcon = (kind, iconName, name, secondary) => {
+    const cls = { odp:'tech-network-odp', odc:'tech-network-odc', olt:'tech-network-olt', router:'tech-network-router' }[kind] || 'tech-network-router';
+    const prefix = { odp:'ODP · ', odc:'ODC · ', olt:'OLT · ', router:'ROUTER · ' }[kind] || '';
+    const label = prefix + String(name || kind.toUpperCase());
+    const sub = String(secondary || '').trim();
+    return L.divIcon({
+      html:'<div class="tech-device-marker-wrap"><span class="tech-network-badge ' + cls + '"><i class="bi ' + iconName + '"></i></span><span class="tech-device-marker-label">' + escapeOdcHtml(label) + '</span>' +
+        (sub ? '<span class="tech-device-marker-sub">' + escapeOdcHtml(sub) + '</span>' : '') + '</div>',
+      className:'custom-div-icon', iconSize:[190,68], iconAnchor:[95,18]
+    });
+  };
+
+  // Add ODP Markers
+  const odpMarkers = {};
+  odps.forEach(odp => {
+    if (odp.lat && odp.lng) {
+      const odpLat = parseFloat(odp.lat);
+      const odpLng = parseFloat(odp.lng);
+      odpMarkers[odp.id] = [odpLat, odpLng];
+      const marker = L.marker([odpLat, odpLng], {
+        icon: buildTechDeviceIcon('odp', 'bi-box-seam-fill', odp.name, 'ODC: ' + (odp.odc_name || '-') + ' · OLT: ' + (odp.olt_name || '-'))
+      }).addTo(map);
+      marker._techNodeType = 'odp';
+      marker._techNodeId = Number(odp.id);
+      
+      const odpCapacity = Number(odp.port_capacity || 16);
+      const odpCustomers = (customers || []).filter(c => Number(c.odp_id) === Number(odp.id));
+      // Capacity is counted as distinct occupied port labels, not subscriber count.
+      const odpUsedPorts = new Set(odpCustomers.map(c => String(c.pon_port || '').trim()).filter(Boolean));
+      const odpUsedCount = odpUsedPorts.size;
+      const odpRemaining = Math.max(0, odpCapacity - odpUsedCount);
+      const odpCapacityLabel = Number.isFinite(odpCapacity) && odpCapacity > 0 ? odpCapacity : 16;
+      const odpRemainingLabel = Math.max(0, odpCapacityLabel - odpUsedCount);
+      const odpPppoeOnline = odpCustomers.filter(c => String(c.pppoe_username || '').trim() && c.status === 'active').length;
+      const safeOdpName = String(odp.name || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+      const safeOltName = String(odp.olt_name || '-').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+      const safePonPort = String(odp.pon_port || 'Belum diatur').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+      const safeOdpDescription = String(odp.description || '-').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+      marker.bindPopup(`
+        <div class="popup-dark">
+          <h6>${safeOdpName}</h6>
+          <div style="font-size:11px;line-height:1.8">
+            <b>OLT:</b> ${safeOltName}<br>
+            <b>Port PON:</b> ${safePonPort}<br>
+            <b>Kapasitas ODP:</b> ${odpCapacityLabel} port<br>
+            <b>Port terpakai:</b> ${odpUsedCount} port<br>
+            <b>Sisa port:</b> <span style="color:${odpRemainingLabel > 0 ? '#34d399' : '#f87171'};font-weight:800">${odpRemainingLabel} port</span><br>
+            <b>Pelanggan terpasang:</b> ${odpCustomers.length}<br>
+            <b>PPPoE aktif menurut data akun:</b> ${odpPppoeOnline}<br>
+            <b>ODC induk:</b> ${String(odp.odc_name || 'Belum dipetakan').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}<br>
+            <b>Ket:</b> ${safeOdpDescription}
+          </div>
+          <a href="https://www.google.com/maps/dir/?api=1&destination=${odp.lat},${odp.lng}" target="_blank" rel="noopener" class="btn btn-wa w-100 text-center mt-2" style="background:#3b82f6">
+            <i class="bi bi-signpost-2"></i> Petunjuk Arah
+          </a>
+        </div>
+      `);
+    }
+  });
+
+  // Add OLT markers
+  const olts = <%- JSON.stringify(olts || []).replace(/<\/script/g, '<\\/script') %>;
+  const routers = <%- JSON.stringify(routers || []).replace(/<\/script/g, '<\\/script') %>;
+  const topologyLinks = <%- JSON.stringify(topologyLinks || []).replace(/<\/script/g, '<\\/script') %>;
+  const customerLinkLines = new Map();
+  const customerMarkers = new Map();
+  const cableLengthRecords = new Map();
+  const roadRouteStates = new Map();
+  const roadRouteRetryAt = new Map();
+  const roadRouteQueue = [];
+  let roadRouteRetryTimer = null;
+  let roadRouteInFlight = false;
+  const roadRouteBase = 'https://router.project-osrm.org/route/v1/driving';
+  const ROAD_ROUTE_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+  const ROAD_SNAP_RADIUS_METERS = 75;
+  const ROAD_SNAP_MAX_DISTANCE_METERS = 60;
+  const cableLengthValue = document.getElementById('techCableLengthValue');
+  const cableLengthMeta = document.getElementById('techCableLengthMeta');
+  let activeDistancePopupMarker = null;
+  const cableRoadCacheKey = points => points.map(p => Number(p[0]).toFixed(6) + ',' + Number(p[1]).toFixed(6)).join('>');
+  const formatCableDistance = meters => {
+    const n = Number(meters);
+    if (!Number.isFinite(n) || n < 0) return 'belum dihitung';
+    return n < 1000 ? Math.round(n) + ' m' : (n / 1000).toFixed(2) + ' km';
+  };
+  const measureCablePath = points => {
+    let meters = 0;
+    for (let i = 1; i < points.length; i++) meters += L.latLng(points[i - 1][0], points[i - 1][1]).distanceTo(L.latLng(points[i][0], points[i][1]));
+    return meters;
+  };
+  function updateCableLengthSummary() {
+    const records = Array.from(cableLengthRecords.values());
+    const ready = records.filter(item => item.state === 'ready');
+    const pending = records.filter(item => item.state === 'pending').length;
+    const unavailable = records.filter(item => item.state === 'unavailable').length;
+    const totalMeters = ready.reduce((sum, item) => sum + (Number(item.meters) || 0), 0);
+    if (cableLengthValue) cableLengthValue.textContent = 'Total panjang rute berhasil dihitung: ' + formatCableDistance(totalMeters);
+    if (cableLengthMeta) {
+      const parts = [ready.length + ' segmen rute berhasil dihitung'];
+      if (pending) parts.push(pending + ' segmen menunggu perhitungan rute');
+      if (unavailable) parts.push(unavailable + ' segmen belum memiliki estimasi panjang');
+      cableLengthMeta.textContent = 'Segmen kabel: ' + records.length + ' • ' + parts.join(' • ') + '.';
+    }
+  }
+  function setCableLengthRecord(key, state, meters, label) {
+    cableLengthRecords.set(key, { state, meters: Number.isFinite(Number(meters)) ? Number(meters) : null, label: String(label || key) });
+    updateCableLengthSummary();
+    refreshActiveDistancePopup();
+  }
+  function addTechCableLine(key, points, style, tooltip, label, metersOverride) {
+    if (!Array.isArray(points) || points.length < 2) return null;
+    const meters = Number.isFinite(Number(metersOverride)) ? Number(metersOverride) : measureCablePath(points);
+    const line = L.polyline(points, Object.assign({ opacity: 0.92, interactive: false }, style || {})).addTo(map);
+    line._cableMetricKey = key;
+    line._cableMeters = meters;
+    line._cableBaseTooltip = String(tooltip || label || 'Jalur kabel');
+    line.bindTooltip(line._cableBaseTooltip + ' • panjang estimasi ' + formatCableDistance(meters), { sticky: true });
+    setCableLengthRecord(key, 'ready', meters, label || tooltip || key);
+    return line;
+  }
+  function setCableLineAnimation(line, active) {
+    const element = line && typeof line.getElement === 'function' ? line.getElement() : null;
+    if (!element || !element.classList) return;
+    element.classList.toggle('flowing-line', Boolean(active));
+    element.classList.toggle('flowing-line-inactive', !active);
+  }
+  function readCachedRoadRoute(key) {
+    try {
+      const raw = window.sessionStorage.getItem('tech-road-route-v2:' + key);
+      const cached = raw ? JSON.parse(raw) : null;
+      const savedAt = Number(cached && cached.savedAt);
+      const age = Date.now() - savedAt;
+      if (cached && Array.isArray(cached.points) && cached.points.length >= 2 && Number.isFinite(Number(cached.distance)) && savedAt > 0 && age >= 0 && age <= ROAD_ROUTE_CACHE_TTL_MS) return cached;
+    } catch (_) {}
+    return null;
+  }
+  function queueRoadRoute(key, waypoints, label, onReady) {
+    const normalized = (Array.isArray(waypoints) ? waypoints : [])
+      .filter(p => Array.isArray(p) && p.length >= 2)
+      .map(p => [Number(p[0]), Number(p[1])])
+      .filter(p => Number.isFinite(p[0]) && Number.isFinite(p[1]) && Math.abs(p[0]) <= 90 && Math.abs(p[1]) <= 180);
+    if (normalized.length < 2 || normalized.length > 100) {
+      roadRouteStates.set(key, 'unavailable');
+      roadRouteRetryAt.set(key, Date.now() + 30000);
+      setCableLengthRecord(key, 'unavailable', null, label);
+      return;
+    }
+    const cacheKey = cableRoadCacheKey(normalized);
+    const cached = readCachedRoadRoute(cacheKey);
+    if (cached) {
+      roadRouteStates.set(key, 'ready');
+      roadRouteRetryAt.delete(key);
+      setCableLengthRecord(key, 'ready', cached.distance, label);
+      onReady(cached.points, cached.distance);
+      return;
+    }
+    const state = roadRouteStates.get(key);
+    if (state === 'pending' || (state === 'unavailable' && Date.now() < (roadRouteRetryAt.get(key) || 0))) return;
+    roadRouteStates.set(key, 'pending');
+    setCableLengthRecord(key, 'pending', null, label);
+    roadRouteQueue.push({ key, waypoints: normalized, cacheKey, label, onReady });
+    processRoadRouteQueue();
+  }
+  async function processRoadRouteQueue() {
+    if (roadRouteInFlight || !roadRouteQueue.length) return;
+    roadRouteInFlight = true;
+    const task = roadRouteQueue.shift();
+    let timeoutId = null;
+    try {
+      // Semua waypoint dipertahankan; OSRM menghubungkan tiap titik lewat jaringan jalan.
+      const coordinates = task.waypoints.map(point => Number(point[1]) + ',' + Number(point[0])).join(';');
+      const radiuses = task.waypoints.map(() => String(ROAD_SNAP_RADIUS_METERS)).join(';');
+      const url = roadRouteBase + '/' + coordinates + '?overview=full&geometries=geojson&alternatives=false&steps=false&continue_straight=true&radiuses=' + radiuses;
+      const controller = new AbortController();
+      timeoutId = window.setTimeout(() => controller.abort(), 15000);
+      const response = await fetch(url, { cache: 'no-store', credentials: 'omit', referrerPolicy: 'strict-origin', signal: controller.signal });
+      const data = await response.json();
+      const route = data && data.code === 'Ok' && Array.isArray(data.routes) ? data.routes[0] : null;
+      const coordinatesOut = route && route.geometry && Array.isArray(route.geometry.coordinates) ? route.geometry.coordinates : [];
+      const points = coordinatesOut.map(point => [Number(point[1]), Number(point[0])]).filter(point => Number.isFinite(point[0]) && Number.isFinite(point[1]));
+      const distance = Number(route && route.distance);
+      const snappedWaypoints = Array.isArray(data && data.waypoints) ? data.waypoints : [];
+      const snapInvalid = snappedWaypoints.length !== task.waypoints.length || snappedWaypoints.some(point => !Number.isFinite(Number(point && point.distance)) || Number(point.distance) > ROAD_SNAP_MAX_DISTANCE_METERS);
+      if (!response.ok || !route || points.length < 2 || !Number.isFinite(distance) || snapInvalid) throw new Error('Rute jalan tidak tersedia atau titik terlalu jauh dari jalan');
+      try { window.sessionStorage.setItem('tech-road-route-v2:' + task.cacheKey, JSON.stringify({ points, distance, savedAt: Date.now() })); } catch (_) {}
+      roadRouteStates.set(task.key, 'ready');
+      roadRouteRetryAt.delete(task.key);
+      setCableLengthRecord(task.key, 'ready', distance, task.label);
+      task.onReady(points, distance);
+    } catch (_) {
+      roadRouteStates.set(task.key, 'unavailable');
+      roadRouteRetryAt.set(task.key, Date.now() + 30000);
+      setCableLengthRecord(task.key, 'unavailable', null, task.label);
+      if (!roadRouteRetryTimer) {
+        roadRouteRetryTimer = window.setTimeout(() => {
+          roadRouteRetryTimer = null;
+          queueVisibleRoadRoutes();
+        }, 31000);
+      }
+    } finally {
+      if (timeoutId) window.clearTimeout(timeoutId);
+      roadRouteInFlight = false;
+      if (roadRouteQueue.length) window.setTimeout(processRoadRouteQueue, 1200);
+    }
+  }
+  const isIsolatedCustomer = cust => {
+    const status = String(cust.status || '').trim().toLowerCase();
+    const profile = String(cust.pppoe_profile || '').trim().toLowerCase();
+    const isolirProfile = String(cust.isolir_profile || 'isolir').trim().toLowerCase();
+    const user = String(cust.pppoe_username || '').trim();
+    return ['suspended','isolir','isolated','inactive','ditangguhkan'].includes(status)
+      || profile === 'isolir' || Boolean(profile && isolirProfile && profile === isolirProfile)
+      || /^\[isolir\]/i.test(user);
+  };
+  function getTechOltConnectionPresentation(cust, isolatedOverride = false, stateOverride = null) {
+    const state = String(stateOverride || (cust && cust.pppoe_state) || 'unknown').trim().toLowerCase();
+    const username = String(cust && cust.pppoe_username || '').trim();
+    const routerId = Number(cust && cust.router_id);
+    const reason = String(cust && cust.pppoe_reason || '').trim().toLowerCase();
+    const isolated = Boolean(isolatedOverride) || state === 'isolated' || isIsolatedCustomer(cust || {});
+    const stale = Boolean(cust && cust.pppoe_state_stale);
+    if (isolated) return { label: 'PELANGGAN ISOLIR', shortLabel: 'ISOLIR', color: '#475569', className: 'pppoe-isolated', detail: 'Akun pelanggan sedang diisolir menurut data billing. Warna ini bukan bukti gangguan fisik kabel.' };
+    if (!username) return { label: 'USERNAME PPPoE KOSONG', shortLabel: 'USERNAME KOSONG', color: '#92400e', className: 'pppoe-unknown', detail: 'Data pelanggan belum memiliki username PPPoE.' };
+    if (!Number.isSafeInteger(routerId) || routerId <= 0) return { label: 'ROUTER BELUM DIPILIH', shortLabel: 'ROUTER BELUM DIPILIH', color: '#92400e', className: 'pppoe-unknown', detail: 'Pilih router MikroTik yang benar di data pelanggan.' };
+    if (state === 'online') return { label: stale ? 'PPPoE ONLINE · DATA TERAKHIR' : 'PPPoE ONLINE', shortLabel: 'PPPoE UP', color: '#1d4ed8', className: 'pppoe-online', detail: stale ? 'Pembacaan terbaru gagal; status ini menggunakan sesi PPPoE terakhir yang berhasil terbaca dan mungkin sudah berubah.' : 'Sesi PPPoE aktif terdeteksi di MikroTik.' };
+    if (state === 'offline') return { label: stale ? 'PPPoE OFFLINE · DATA TERAKHIR' : 'PPPoE OFFLINE', shortLabel: 'PPPoE DOWN', color: '#b91c1c', className: 'pppoe-offline', detail: stale ? 'Pembacaan terbaru gagal; status ini memakai data PPPoE terakhir yang berhasil terbaca dan mungkin sudah berubah.' : 'Username tidak ditemukan pada daftar sesi PPPoE aktif di MikroTik.' };
+    if (reason === 'router_disabled') return { label: 'ROUTER NONAKTIF', shortLabel: 'ROUTER NONAKTIF', color: '#92400e', className: 'pppoe-unknown', detail: 'Router pelanggan dinonaktifkan di billing.' };
+    if (reason === 'router_unavailable') return { label: 'STATUS PPPoE BELUM TERBACA', shortLabel: 'TIDAK TERBACA', color: '#92400e', className: 'pppoe-unknown', detail: 'Billing gagal membaca sesi PPPoE dari MikroTik. Kuning berarti status belum diketahui, bukan pasti offline.' };
+    return { label: 'STATUS PPPoE BELUM TERBACA', shortLabel: 'MENUNGGU STATUS', color: '#92400e', className: 'pppoe-unknown', detail: 'Sesi PPPoE belum bisa dipastikan dari data saat ini.' };
+  }
+  const buildTechCustomerIcon = (cust, isolatedOverride = false, stateOverride = null) => {
+    const customerId = Number(cust.id);
+    const displayLabel = String(cust.name || 'Pelanggan');
+    const presentation = getTechOltConnectionPresentation(cust, isolatedOverride, stateOverride);
+    const markerTitle = displayLabel + ' — ' + presentation.label;
+    const pinHtml = '<span id="tech-customer-icon-' + customerId + '" class="tech-customer-marker ' + presentation.className + '" title="' + escapeOdcHtml(markerTitle) + '"><i class="bi bi-router-fill"></i></span>';
+    const labelHtml = '<span class="tech-customer-name" title="' + escapeOdcHtml(displayLabel) + '">' + escapeOdcHtml(displayLabel) + '</span>';
+    return L.divIcon({
+      html: '<div class="tech-customer-icon-wrap">' + pinHtml + labelHtml + '</div>',
+      className: 'custom-div-icon', iconSize: [180,42], iconAnchor: [90,14]
+    });
+  };
+  function syncTechOltPopup(cust) {
+    const id = Number(cust && cust.id);
+    const serial = document.getElementById('tech-olt-sn-' + id);
+    const status = document.getElementById('tech-olt-status-' + id);
+    const connectionStatus = document.getElementById('tech-connection-status-' + id);
+    const connectionReason = document.getElementById('tech-connection-reason-' + id);
+    const reason = document.getElementById('tech-olt-reason-' + id);
+    const olt = document.getElementById('tech-olt-name-' + id);
+    const position = document.getElementById('tech-olt-position-' + id);
+    if (serial) serial.textContent = cust.onu_sn || '-';
+    if (status) status.textContent = cust.onu_olt_status_label || 'Status OLT belum tersedia';
+    if (connectionStatus) {
+      const presentation = getTechOltConnectionPresentation(cust);
+      connectionStatus.textContent = presentation.label;
+      connectionStatus.style.color = presentation.color;
+      connectionStatus.style.fontWeight = '800';
+    }
+    if (connectionReason) {
+      connectionReason.textContent = getTechOltConnectionPresentation(cust).detail;
+    }
+    if (reason) {
+      reason.textContent = cust.onu_olt_reason || '-';
+      const row = reason.closest('.tech-olt-reason-row');
+      if (row) row.style.display = cust.onu_olt_reason ? '' : 'none';
+    }
+    if (olt) olt.textContent = cust.onu_olt_name || cust.olt_name || '-';
+    if (position) position.textContent = cust.onu_olt_pon_id != null ? 'PON ' + cust.onu_olt_pon_id + ' / ONU ' + (cust.onu_olt_onu_id ?? '-') : '-';
+  }
+  const currentCustomerCableStates = new Map();
+  const currentCustomerCableLive = new Map();
+  const makeCustomerCableLine = (cust, pathCoords, roadDistance) => {
+    const customerId = Number(cust.id);
+    const key = 'customer:' + customerId;
+    const state = currentCustomerCableStates.get(customerId) || 'unknown';
+    const color = state === 'offline' ? '#ef4444' : (state === 'online' ? '#2563eb' : '#f59e0b');
+    const description = state === 'offline' ? 'PPPoE OFFLINE' : (state === 'online' ? 'PPPoE ONLINE' : 'Status PPPoE belum diketahui');
+    const flowing = state === 'online' && currentCustomerCableLive.get(customerId) === true;
+    const line = addTechCableLine(key, pathCoords, { color, weight:3, opacity:0.95, dashArray:state === 'offline' ? '8,6' : '10,10', className:flowing ? 'flowing-line' : 'flowing-line-inactive' }, 'Drop FO · ODP → ONT/Pelanggan • ' + description, 'Pelanggan ' + customerId, roadDistance);
+    if (line) customerLinkLines.set(customerId, line);
+    return line;
+  };
+  const createTechCustomerCable = (cust, forceVisible = false) => {
+    const customerId = Number(cust.id);
+    const cableKey = 'customer:' + customerId;
+    const odpCoord = odpMarkers[cust.odp_id];
+    const lat = Number(cust.lat), lng = Number(cust.lng);
+    if (!odpCoord || !Number.isFinite(lat) || !Number.isFinite(lng) || lat === 0 || lng === 0) return null;
+    const customerPoint = [lat, lng];
+    const customerPointVisible = map.getZoom() >= 14 && map.getBounds().contains(customerPoint);
+    if (customerLinkLines.has(customerId)) return customerLinkLines.get(customerId);
+
+    let interiorWaypoints = [];
+    if (cust.cable_path) {
+      try {
+        const parsed = JSON.parse(cust.cable_path);
+        if (Array.isArray(parsed) && parsed.length >= 2) {
+          const cleaned = parsed.filter(p => Array.isArray(p) && p.length >= 2)
+            .map(p => [Number(p[0]), Number(p[1])])
+            .filter(p => Number.isFinite(p[0]) && Number.isFinite(p[1]) && Math.abs(p[0]) <= 90 && Math.abs(p[1]) <= 180);
+          if (cleaned.length >= 2) {
+            const firstToOdp = L.latLng(cleaned[0][0], cleaned[0][1]).distanceTo(L.latLng(odpCoord[0], odpCoord[1]));
+            const lastToOdp = L.latLng(cleaned[cleaned.length - 1][0], cleaned[cleaned.length - 1][1]).distanceTo(L.latLng(odpCoord[0], odpCoord[1]));
+            interiorWaypoints = cleaned.slice(1, -1);
+            if (firstToOdp > lastToOdp) interiorWaypoints.reverse();
+          }
+        }
+      } catch (_) {}
+    }
+    const roadWaypoints = [odpCoord, ...interiorWaypoints, customerPoint];
+    const state = roadRouteStates.get(cableKey);
+    if (state === 'pending') return null;
+    // Jalur drop hanya diminta pada zoom jalan; semua titik manual menjadi waypoint OSRM, bukan digambar mentah.
+    if (!forceVisible && !customerPointVisible) return null;
+    queueRoadRoute(cableKey, roadWaypoints, 'Pelanggan ' + customerId, (routedPoints, distance) => {
+      if (currentCustomerCableStates.get(customerId) === 'isolated') {
+        cableLengthRecords.delete(cableKey);
+        updateCableLengthSummary();
+        return;
+      }
+      makeCustomerCableLine(cust, routedPoints, distance);
+    });
+    return null;
+  };
+
+
+  const networkPoints = [];
+  odcs.forEach(odc => {
+    const lat = Number(odc.lat), lng = Number(odc.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat === 0 || lng === 0) return;
+    const marker = L.marker([lat, lng], { icon:buildTechDeviceIcon('odc', 'bi-boxes', odc.name, 'OLT: ' + (odc.olt_name || '-')) }).addTo(map);
+    marker._techNodeType = 'odc';
+    marker._techNodeId = Number(odc.id);
+    marker.bindPopup('<div class="popup-dark"><h6>' + escapeOdcHtml(odc.name || 'ODC') + '</h6><div style="font-size:11px"><b>Kode:</b> ' + escapeOdcHtml(odc.code || '-') + '<br><b>OLT:</b> ' + escapeOdcHtml(odc.olt_name || '-') + '<br><b>Deskripsi:</b> ' + escapeOdcHtml(odc.description || '-') + '</div><a href="https://www.google.com/maps/dir/?api=1&destination=' + lat + ',' + lng + '" target="_blank" rel="noopener" class="btn btn-wa w-100 text-center mt-2" style="background:#3b82f6">Petunjuk Arah</a></div>');
+    networkPoints.push(marker);
+  });
+
+  olts.forEach(olt => {
+    if (!Number.isFinite(Number(olt.lat)) || !Number.isFinite(Number(olt.lng))) return;
+    const color = olt.is_active ? '#8b5cf6' : '#64748b';
+    const marker = L.marker([Number(olt.lat), Number(olt.lng)], {
+      icon: buildTechDeviceIcon('olt', 'bi-hdd-rack-fill', olt.name)
+    }).addTo(map);
+    marker._techNodeType = 'olt';
+    marker._techNodeId = Number(olt.id);
+    marker.bindPopup(
+      '<div class="popup-dark"><h6><i class="bi bi-hdd-rack-fill me-1"></i>' + String(olt.name || 'OLT') + '</h6>' +
+      '<div style="font-size:11px"><b>Brand:</b> ' + String(olt.brand || '-') + '<br><b>Host:</b> ' + String(olt.host || '-') +
+      '<br><b>Port PON fisik:</b> ' + (Number(olt.pon_port_count) > 0 ? Number(olt.pon_port_count) + ' port' : 'Belum diatur') +
+      '<br><b>Status:</b> ' + (olt.is_active ? '<span class="text-success">Aktif</span>' : '<span class="text-danger">Nonaktif</span>') +
+      (olt.virtual_position ? '<br><small>Posisi perkiraan dari data ODP</small>' : '') + '</div></div>'
+    );
+    networkPoints.push(marker);
+  });
+
+  // Add MikroTik markers
+  routers.forEach(router => {
+    if (!Number.isFinite(Number(router.lat)) || !Number.isFinite(Number(router.lng))) return;
+    const color = router.is_active ? '#06b6d4' : '#64748b';
+    const marker = L.marker([Number(router.lat), Number(router.lng)], {
+      icon: buildTechDeviceIcon('router', 'bi-router-fill', router.name)
+    }).addTo(map);
+    marker._techNodeType = 'router';
+    marker._techNodeId = Number(router.id);
+    const routerLat = Number(router.lat);
+    const routerLng = Number(router.lng);
+    const routerName = encodeURIComponent(String(router.name || 'MikroTik'));
+    const geoUrl = 'geo:' + routerLat + ',' + routerLng + '?q=' + routerLat + ',' + routerLng + '(' + routerName + ')';
+    const mapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + routerLat + ',' + routerLng;
+    marker.bindPopup(
+      '<div class="popup-dark"><h6><i class="bi bi-router-fill me-1"></i>' + String(router.name || 'MikroTik') + '</h6>' +
+      '<div style="font-size:11px"><b>Host:</b> ' + String(router.host || '-') +
+      '<br><b>Status:</b> ' + (router.is_active ? '<span class="text-success">Aktif</span>' : '<span class="text-danger">Nonaktif</span>') +
+      (router.virtual_position ? '<br><small>Lokasi perkiraan; koordinat GPS belum tersedia</small>' : '') +
+      '</div><div class="d-grid gap-1 mt-2">' +
+      '<a href="' + geoUrl + '" class="btn btn-primary btn-sm"><i class="bi bi-navigation-fill me-1"></i> Buka GPS</a>' +
+      '<a href="' + mapsUrl + '" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm"><i class="bi bi-google me-1"></i> Google Maps</a>' +
+      '</div></div>'
+    );
+    networkPoints.push(marker);
+  });
+
+  // Gambar topologi kabel jaringan; label mengikuti arah downstream optik dan uplink/backhaul.
+  // Jalur manual dari Admin diprioritaskan; bila belum ada, garis otomatis
+  // mengikuti koordinat endpoint agar teknisi tetap melihat koneksi jaringan.
+  const topoCoord = (type, id) => {
+    const n = Number(id);
+    if (type === 'odp') {
+      const o = odps.find(x => Number(x.id) === n);
+      return o && Number.isFinite(Number(o.lat)) && Number.isFinite(Number(o.lng)) ? [Number(o.lat), Number(o.lng)] : null;
+    }
+    if (type === 'olt') {
+      const o = olts.find(x => Number(x.id) === n);
+      return o && !o.virtual_position && Number.isFinite(Number(o.lat)) && Number.isFinite(Number(o.lng)) ? [Number(o.lat), Number(o.lng)] : null;
+    }
+    if (type === 'odc') {
+      const d = odcs.find(x => Number(x.id) === n);
+      return d && Number.isFinite(Number(d.lat)) && Number.isFinite(Number(d.lng)) ? [Number(d.lat), Number(d.lng)] : null;
+    }
+    if (type === 'router') {
+      const r = routers.find(x => Number(x.id) === n);
+      return r && !r.virtual_position && Number.isFinite(Number(r.lat)) && Number.isFinite(Number(r.lng)) ? [Number(r.lat), Number(r.lng)] : null;
+    }
+    if (type === 'customer') {
+      const c = customers.find(x => Number(x.id) === n);
+      return c && Number.isFinite(Number(c.lat)) && Number.isFinite(Number(c.lng)) ? [Number(c.lat), Number(c.lng)] : null;
+    }
+    return null;
+  };
+
+  const topologySegmentName = link => link.segment_type === 'odp-odc' ? 'Distribusi FO'
+    : (link.segment_type === 'odc-olt' ? 'Feeder PON · OLT → ODC'
+    : (link.segment_type === 'olt-router' ? 'Backhaul/uplink · MikroTik ↔ OLT' : 'Jalur jaringan'));
+  function drawTopologyCable(link, points, key, roadDistance) {
+    const cableStatus = String(link.status || 'unknown');
+    const active = cableStatus === 'active';
+    const inactive = cableStatus === 'inactive';
+    const isOdpOdc = link.segment_type === 'odp-odc';
+    const isOdcOlt = link.segment_type === 'odc-olt';
+    const isOltRouter = link.segment_type === 'olt-router';
+    const baseColor = isOdpOdc ? '#f59e0b' : (isOdcOlt ? '#0891b2' : (isOltRouter ? '#7c3aed' : '#2563eb'));
+    const segmentName = topologySegmentName(link);
+    const statusName = active ? 'aktif sesuai konfigurasi' : (inactive ? 'NONAKTIF (ditetapkan admin)' : 'STATUS FISIK BELUM DIVERIFIKASI');
+    const line = addTechCableLine(key, points, {
+      color: inactive ? '#ef4444' : baseColor,
+      weight: (isOdpOdc || isOdcOlt) ? 4 : 3,
+      opacity: 0.9,
+      dashArray: inactive ? '8, 8' : '10, 8',
+      className: inactive ? 'flowing-line-inactive' : 'flowing-line'
+    }, segmentName + ' • ' + statusName, segmentName, roadDistance);
+    if (!line) return;
+    link._leafletLine = line;
+    link._baseColor = baseColor;
+    link._manualInactive = inactive;
+    link._baseTooltip = segmentName + ' • ' + statusName + ' • panjang estimasi ' + formatCableDistance(line._cableMeters);
+  }
+
+  const topologyPathPoints = link => Array.isArray(link.manual_path) ? link.manual_path
+    .filter(p => Array.isArray(p) && p.length >= 2)
+    .map(p => [Number(p[0]), Number(p[1])])
+    .filter(p => Number.isFinite(p[0]) && Number.isFinite(p[1])) : [];
+  // Semua garis backbone (termasuk waypoint manual) harus dirutekan melalui jaringan jalan OSRM.
+  // Jalur mentah tidak digambar sebagai fallback agar tidak memotong blok/bangunan.
+  function queueVisibleTopologyRoadRoutes() {
+    if (map.getZoom() < 12) return;
+    const bounds = map.getBounds();
+    topologyLinks.forEach(link => {
+      if (link.segment_type === 'odp-customer') return;
+      const key = 'topology:' + [link.segment_type, link.source_type, link.source_id, link.target_type, link.target_id].join(':');
+      if (link._leafletLine) return;
+      // Backhaul OLT → MikroTik memakai dua koordinat perangkat; titik manual lama tidak menjadi waypoint wajib.
+      const manualPoints = link.segment_type === 'olt-router' ? [] : topologyPathPoints(link);
+      const a = topoCoord(link.source_type, link.source_id) || (manualPoints.length >= 2 ? manualPoints[0] : null);
+      const b = topoCoord(link.target_type, link.target_id) || (manualPoints.length >= 2 ? manualPoints[manualPoints.length - 1] : null);
+      if (!a || !b || ![a, ...manualPoints, b].some(point => bounds.contains(point))) return;
+      const waypoints = manualPoints.length >= 2 ? [a, ...manualPoints.slice(1, -1), b] : [a, b];
+      queueRoadRoute(key, waypoints, topologySegmentName(link), (routedPoints, distance) => {
+        drawTopologyCable(link, routedPoints, key, distance);
+      });
+    });
+  }
+  function queueVisibleCustomerRoadRoutes() {
+    if (map.getZoom() < 14) return;
+    const bounds = map.getBounds();
+    customers.forEach(cust => {
+      if (isIsolatedCustomer(cust) || currentCustomerCableStates.get(Number(cust.id)) === 'isolated') return;
+      const lat = Number(cust.lat), lng = Number(cust.lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat === 0 || lng === 0) return;
+      if (!bounds.contains([lat, lng])) return;
+      if (!customerLinkLines.has(Number(cust.id))) createTechCustomerCable(cust);
+    });
+  }
+  function queueVisibleRoadRoutes() {
+    queueVisibleTopologyRoadRoutes();
+    queueVisibleCustomerRoadRoutes();
+  }
+  map.on('moveend zoomend', queueVisibleRoadRoutes);
+
+  // Add Customer Markers
+  customers.forEach(cust => {
+    if (cust.lat && cust.lng) {
+      const is_active = cust.status === 'active';
+      const isIsolated = isIsolatedCustomer(cust);
+      const iconClass = is_active ? 'marker-cust-active' : 'marker-cust-suspended';
+      const custLat = parseFloat(cust.lat);
+      const custLng = parseFloat(cust.lng);
+      
+      // Isolated customers deliberately have no cable line.
+      if (!isIsolated) createTechCustomerCable(cust);
+
+      const marker = L.marker([custLat, custLng], {
+        icon: buildTechCustomerIcon(cust, isIsolated)
+      }).addTo(map);
+      marker._techNodeType = 'customer';
+      marker._techNodeId = Number(cust.id);
+      customerMarkers.set(Number(cust.id), marker);
+
+      marker.bindPopup(`
+        <div class="popup-dark">
+          <h6>${cust.name}</h6>
+          <div style="font-size:11px">
+            <b>Alamat:</b> ${escapeOdcHtml(cust.address || '-')}<br>
+            <b>Paket:</b> ${escapeOdcHtml(cust.package_name || '-')}<br>
+            <b>Status PPPoE:</b> <span id="tech-connection-status-${Number(cust.id)}" style="font-weight:800;color:${getTechOltConnectionPresentation(cust).color}">${getTechOltConnectionPresentation(cust).label}</span><br>
+            <small id="tech-connection-reason-${Number(cust.id)}" style="display:block;margin:2px 0 5px;color:#475569">${getTechOltConnectionPresentation(cust).detail}</small>
+            <b>SN ONT:</b> <span id="tech-olt-sn-${Number(cust.id)}">${escapeOdcHtml(cust.onu_sn || '-')}</span><br>
+            <b>Detail status OLT:</b> <span id="tech-olt-status-${Number(cust.id)}">${escapeOdcHtml(cust.onu_olt_status_label || 'Status OLT belum tersedia')}</span><br>
+            <span class="tech-olt-reason-row" style="${cust.onu_olt_reason ? '' : 'display:none'}"><b>Keterangan:</b> <span id="tech-olt-reason-${Number(cust.id)}">${escapeOdcHtml(cust.onu_olt_reason || '-')}</span><br></span>
+            <b>OLT / PON / ONU:</b> <span id="tech-olt-name-${Number(cust.id)}">${escapeOdcHtml(cust.onu_olt_name || cust.olt_name || '-')}</span> · <span id="tech-olt-position-${Number(cust.id)}">${cust.onu_olt_pon_id != null ? 'PON ' + cust.onu_olt_pon_id + ' / ONU ' + cust.onu_olt_onu_id : '-'}</span><br>
+            <b>ODP / ODC:</b> ${escapeOdcHtml(cust.odp_name || '-')} / ${escapeOdcHtml(cust.odc_name || '-')}<br>
+            <b>OLT terpetakan:</b> ${escapeOdcHtml(cust.olt_name || '-')}
+          </div>
+          <div class="d-flex gap-1">
+            <a href="https://wa.me/${cust.phone}" class="btn btn-wa flex-grow-1 text-center">
+              <i class="bi bi-whatsapp"></i> Chat
+            </a>
+            <a href="https://www.google.com/maps/dir/?api=1&destination=${cust.lat},${cust.lng}" target="_blank" class="btn btn-wa flex-grow-1 text-center" style="background:#3b82f6">
+              <i class="bi bi-geo-alt"></i> Rute
+            </a>
+          </div>
+        </div>
+      `);
+      marker.on('popupopen', () => {
+        syncTechOltPopup(cust);
+        // Refresh saat popup dibuka supaya status awal yang tersimpan tidak terus tampil usang.
+        refreshTechTopologyLiveStatus();
+      });
+    }
+  });
+
+  // Toggleable customer search; collapsed mode only occupies a small map button.
+  (() => {
+    const container = document.getElementById('techMapCustomerSearch');
+    const toggleButton = document.getElementById('techMapCustomerSearchToggle');
+    const searchInput = document.getElementById('techMapCustomerSearchInput');
+    const clearButton = document.getElementById('techMapCustomerSearchClear');
+    const resultsBox = document.getElementById('techMapCustomerSearchResults');
+    if (!container || !toggleButton || !searchInput || !clearButton || !resultsBox) return;
+
+    const normalizeSearchText = value => String(value == null ? '' : value).trim().toLocaleLowerCase('id-ID');
+    let currentSearchResults = [];
+    const setSearchOpen = (open, focusInput = false) => {
+      container.classList.toggle('is-closed', !open);
+      toggleButton.setAttribute('aria-expanded', String(open));
+      toggleButton.setAttribute('aria-label', open ? 'Tutup pencarian pelanggan' : 'Buka pencarian pelanggan');
+      toggleButton.title = open ? 'Tutup pencarian' : 'Cari pelanggan';
+      toggleButton.innerHTML = open
+        ? '<i class="bi bi-x-lg" aria-hidden="true"></i>'
+        : '<i class="bi bi-search" aria-hidden="true"></i>';
+      if (!open) resultsBox.hidden = true;
+      if (open && focusInput) window.setTimeout(() => searchInput.focus(), 40);
+      window.setTimeout(() => {
+        if (window.techNetworkMap && window.techNetworkMap.invalidateSize) {
+          window.techNetworkMap.invalidateSize({ pan: false, animate: false });
+        }
+      }, 80);
+    };
+    const makeSearchResultText = cust => [
+      cust.onu_sn ? 'SN ' + cust.onu_sn : '',
+      cust.pppoe_username || '',
+      cust.phone || '',
+      cust.address || '',
+      cust.odp_name || ''
+    ].filter(Boolean).join(' · ');
+
+    const closeAfterSelection = () => {
+      currentSearchResults = [];
+      resultsBox.replaceChildren();
+      resultsBox.hidden = true;
+      setSearchOpen(false);
+    };
+    const selectSearchCustomer = cust => {
+      const marker = customerMarkers.get(Number(cust.id));
+      const lat = Number(cust.lat), lng = Number(cust.lng);
+      if (!marker || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+        resultsBox.replaceChildren();
+        const empty = document.createElement('div');
+        empty.className = 'tech-map-search-empty';
+        empty.textContent = 'Pelanggan ada di data, tetapi marker GPS belum tersedia pada peta teknisi.';
+        resultsBox.appendChild(empty);
+        resultsBox.hidden = false;
+        return;
+      }
+      marker.setZIndexOffset(10000);
+      closeAfterSelection();
+      map.flyTo([lat, lng], Math.max(map.getZoom(), 18), { duration: 0.75 });
+      window.setTimeout(() => marker.openPopup(), 850);
+    };
+
+    const renderSearchResults = value => {
+      const query = normalizeSearchText(value);
+      resultsBox.replaceChildren();
+      currentSearchResults = [];
+      if (!query) {
+        resultsBox.hidden = true;
+        return;
+      }
+      const fields = cust => [
+        cust.name, cust.pppoe_username, cust.phone, cust.address, cust.area,
+        cust.onu_sn, cust.olt_name, cust.odp_name, cust.odc_name,
+        cust.onu_olt_status_label
+      ].map(normalizeSearchText).join(' ');
+      currentSearchResults = (customers || [])
+        .filter(cust => cust.lat && cust.lng &&
+          Number.isFinite(Number(cust.lat)) && Number.isFinite(Number(cust.lng)) &&
+          fields(cust).includes(query))
+        .slice(0, 10);
+
+      if (!currentSearchResults.length) {
+        const empty = document.createElement('div');
+        empty.className = 'tech-map-search-empty';
+        empty.textContent = 'Pelanggan tidak ditemukan di data peta. Coba nama, PPPoE, atau SN ONU.';
+        resultsBox.appendChild(empty);
+        resultsBox.hidden = false;
+        return;
+      }
+
+      currentSearchResults.forEach(cust => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'tech-map-search-result';
+        button.setAttribute('role', 'option');
+        const name = document.createElement('strong');
+        name.textContent = String(cust.name || 'Pelanggan #' + cust.id);
+        const meta = document.createElement('small');
+        meta.textContent = makeSearchResultText(cust) || 'Koordinat GPS tersedia';
+        button.append(name, meta);
+        button.addEventListener('click', () => selectSearchCustomer(cust));
+        resultsBox.appendChild(button);
+      });
+      resultsBox.hidden = false;
+    };
+
+    toggleButton.addEventListener('click', () => {
+      const isOpen = !container.classList.contains('is-closed');
+      if (isOpen) {
+        searchInput.value = '';
+        currentSearchResults = [];
+        resultsBox.replaceChildren();
+        setSearchOpen(false);
+      } else {
+        setSearchOpen(true, true);
+      }
+    });
+    searchInput.addEventListener('input', () => renderSearchResults(searchInput.value));
+    searchInput.addEventListener('focus', () => {
+      if (searchInput.value.trim()) renderSearchResults(searchInput.value);
+    });
+    searchInput.addEventListener('keydown', event => {
+      if (event.key === 'Escape') {
+        searchInput.value = '';
+        currentSearchResults = [];
+        resultsBox.replaceChildren();
+        setSearchOpen(false);
+        toggleButton.focus();
+      } else if (event.key === 'Enter') {
+        event.preventDefault();
+        if (currentSearchResults.length) selectSearchCustomer(currentSearchResults[0]);
+      }
+    });
+    clearButton.addEventListener('click', () => {
+      searchInput.value = '';
+      currentSearchResults = [];
+      resultsBox.replaceChildren();
+      resultsBox.hidden = true;
+      searchInput.focus();
+    });
+    document.addEventListener('pointerdown', event => {
+      if (!container.contains(event.target) || event.target === toggleButton) {
+        if (!container.classList.contains('is-closed') && event.target !== toggleButton &&
+            !container.contains(event.target)) {
+          searchInput.value = '';
+          currentSearchResults = [];
+          resultsBox.replaceChildren();
+          setSearchOpen(false);
+        }
+      }
+    });
+  })();
+
+  const cableKeyForTopologyLink = link => link.segment_type === 'odp-customer'
+    ? 'customer:' + Number(link.source_id)
+    : 'topology:' + [link.segment_type, link.source_type, link.source_id, link.target_type, link.target_id].join(':');
+  const techNodeName = (type, id) => {
+    const n = Number(id);
+    if (type === 'customer') { const item = customers.find(x => Number(x.id) === n); return item ? (item.name || item.pppoe_username || ('Pelanggan #' + n)) : ('Pelanggan #' + n); }
+    if (type === 'odp') { const item = odps.find(x => Number(x.id) === n); return item ? (item.name || ('ODP #' + n)) : ('ODP #' + n); }
+    if (type === 'odc') { const item = odcs.find(x => Number(x.id) === n); return item ? (item.name || ('ODC #' + n)) : ('ODC #' + n); }
+    if (type === 'olt') { const item = olts.find(x => Number(x.id) === n); return item ? (item.name || ('OLT #' + n)) : ('OLT #' + n); }
+    if (type === 'router') { const item = routers.find(x => Number(x.id) === n); return item ? (item.name || ('MikroTik #' + n)) : ('MikroTik #' + n); }
+    return type + ' #' + n;
+  };
+  function ensureCustomerCableRoute(customer) {
+    if (!customer || isIsolatedCustomer(customer)) return;
+    const customerId = Number(customer.id);
+    if (customerLinkLines.has(customerId)) return;
+    const key = 'customer:' + customerId;
+    const odpCoord = odpMarkers[customer.odp_id];
+    const lat = Number(customer.lat), lng = Number(customer.lng);
+    if (!odpCoord || !Number.isFinite(lat) || !Number.isFinite(lng) || !lat || !lng) {
+      setCableLengthRecord(key, 'unavailable', null, 'Pelanggan ' + customerId);
+      return;
+    }
+    // Popup jarak memakai fungsi yang sama agar waypoint manual tetap di-snap ke jalan.
+    createTechCustomerCable(customer, true);
+  }
+  function getRelevantDistanceLinks(type, id) {
+    const nodeId = Number(id);
+    const find = (segment, sourceType, sourceId, targetType, targetId) => topologyLinks.filter(link =>
+      link.segment_type === segment &&
+      (sourceType == null || String(link.source_type) === sourceType) &&
+      (sourceId == null || Number(link.source_id) === Number(sourceId)) &&
+      (targetType == null || String(link.target_type) === targetType) &&
+      (targetId == null || Number(link.target_id) === Number(targetId)));
+
+    // Popup sengaja hanya menampilkan satu lompatan terdekat dari marker yang diketuk.
+    // Ini mencegah daftar Customer -> ODP -> ODC -> OLT -> MikroTik memenuhi popup.
+    if (type === 'customer') return find('odp-customer', 'customer', nodeId, 'odp');
+    if (type === 'odp') return find('odp-odc', 'odp', nodeId, 'odc');
+    if (type === 'odc') return find('odc-olt', 'odc', nodeId, 'olt');
+    if (type === 'olt') return find('olt-router', 'olt', nodeId, 'router');
+    // Ketika marker MikroTik diketuk, tampilkan hanya hubungan langsung ke OLT.
+    if (type === 'router') return find('olt-router', 'olt', null, 'router', nodeId);
+    return [];
+  }
+  function ensureNodeCableRoutes(type, id) {
+    const nodeId = Number(id);
+    const links = getRelevantDistanceLinks(type, nodeId);
+    links.forEach(link => {
+      const key = cableKeyForTopologyLink(link);
+      if (link.segment_type === 'odp-customer') {
+        const customer = customers.find(item => Number(item.id) === Number(link.source_id));
+        ensureCustomerCableRoute(customer);
+        return;
+      }
+      if (link._leafletLine) return;
+      // Popup jarak menggunakan kebijakan yang sama dengan garis peta: backhaul hanya endpoint OLT dan MikroTik.
+      const saved = link.segment_type === 'olt-router' ? [] : topologyPathPoints(link);
+      const a = topoCoord(link.source_type, link.source_id) || (saved.length >= 2 ? saved[0] : null);
+      const b = topoCoord(link.target_type, link.target_id) || (saved.length >= 2 ? saved[saved.length - 1] : null);
+      if (!a || !b) { setCableLengthRecord(key, 'unavailable', null, topologySegmentName(link)); return; }
+      const waypoints = saved.length >= 2 ? [a, ...saved.slice(1, -1), b] : [a, b];
+      queueRoadRoute(key, waypoints, topologySegmentName(link), (points, distance) => drawTopologyCable(link, points, key, distance));
+    });
+  }
+  function nodeDistancePanelHtml(type, id) {
+    const links = getRelevantDistanceLinks(type, id);
+    if (!links.length) return '<div style="margin-top:8px;padding-top:8px;border-top:1px solid #dbe5f2;font-size:11px"><b>Panjang segmen kabel:</b> Belum ada koneksi jaringan yang dipetakan untuk perangkat ini.</div>';
+    const rows = links.slice(0, 10).map(link => {
+      const key = cableKeyForTopologyLink(link);
+      const record = cableLengthRecords.get(key);
+      const segment = link.segment_type === 'odp-customer' ? 'Drop FO · ODP → ONT/Pelanggan' : topologySegmentName(link);
+      const fromName = techNodeName(link.source_type, link.source_id);
+      const toName = techNodeName(link.target_type, link.target_id);
+      let distanceLabel = 'Menunggu rute jalan';
+      if (record && record.state === 'ready') distanceLabel = '≈ ' + formatCableDistance(record.meters);
+      else if (record && record.state === 'pending') distanceLabel = 'Menghitung…';
+      else if (record && record.state === 'unavailable') distanceLabel = 'Rute / koordinat belum tersedia';
+      return '<div style="display:flex;justify-content:space-between;gap:10px;padding:4px 0;border-bottom:1px solid #e2e8f0"><span>' + escapeOdcHtml(segment) + '<small style="display:block;color:#64748b">' + escapeOdcHtml(fromName) + ' → ' + escapeOdcHtml(toName) + '</small></span><b style="white-space:nowrap">' + escapeOdcHtml(distanceLabel) + '</b></div>';
+    }).join('');
+    const rest = links.length > 10 ? '<small style="display:block;margin-top:4px;color:#64748b">+' + (links.length - 10) + ' segmen lain.</small>' : '';
+    return '<div style="margin-top:8px;padding-top:8px;border-top:1px solid #dbe5f2;font-size:11px"><b>Jarak jalur kabel</b>' + rows + rest + '</div>';
+  }
+  const opticalReadingRecords = new Map();
+  const SPLITTER_LOSS_DB = { 2: 3.5, 4: 7.2, 8: 10.5, 16: 13.5, 24: 10.7 };
+  const OLT_TX_REFERENCE_DBM = 6; // Acuan TX OLT +6 dBm; bukan hasil pembacaan aktual.
+  const FIBER_LOSS_DB_PER_KM = 0.25; // Estimasi downstream, bukan hasil ukur OTDR.
+  const ADAPTER_LOSS_DB_PER_PAIR = 0.3; // Asumsi rugi satu titik sambungan adaptor/konektor.
+  const ADAPTER_PAIRS_PER_SEGMENT = 2; // Asumsi dua titik koneksi per segmen FO.
+  const FUSION_SPLICE_LOSS_DB = 0.1; // Asumsi redaman satu sambungan fusion splice.
+  const FUSION_SPLICES_PER_SEGMENT = 2; // Asumsi dua fusion splice per segmen untuk terminasi/pigtail.
+  function getOpticalSegmentLoss(segmentType, sourceType, sourceId, targetType, targetId) {
+    const link = topologyLinks.find(item =>
+      item.segment_type === segmentType &&
+      item.source_type === sourceType &&
+      Number(item.source_id) === Number(sourceId) &&
+      (targetType == null || item.target_type === targetType) &&
+      (targetId == null || Number(item.target_id) === Number(targetId)));
+    const adapterPairs = ADAPTER_PAIRS_PER_SEGMENT;
+    const adapterLossDb = adapterPairs * ADAPTER_LOSS_DB_PER_PAIR;
+    const fusionSplices = FUSION_SPLICES_PER_SEGMENT;
+    const spliceLossDb = fusionSplices * FUSION_SPLICE_LOSS_DB;
+    const fixedLossDb = adapterLossDb + spliceLossDb;
+    const assumption = adapterPairs + ' titik adaptor × ' + ADAPTER_LOSS_DB_PER_PAIR.toFixed(2) + ' dB + ' +
+      fusionSplices + ' fusion splice × ' + FUSION_SPLICE_LOSS_DB.toFixed(2) + ' dB = ' + fixedLossDb.toFixed(2) + ' dB (asumsi)';
+    if (!link) return { ready: false, reason: 'Jalur FO belum dipetakan', adapterPairs, adapterLossDb, fusionSplices, spliceLossDb, fixedLossDb, assumption };
+    const key = cableKeyForTopologyLink(link);
+    const record = cableLengthRecords.get(key);
+    if (!record || record.state !== 'ready' || !Number.isFinite(Number(record.meters))) {
+      return { ready: false, reason: record && record.state === 'unavailable' ? 'Panjang rute FO belum tersedia' : 'Menunggu perhitungan panjang rute FO', adapterPairs, adapterLossDb, fusionSplices, spliceLossDb, fixedLossDb, assumption };
+    }
+    const meters = Number(record.meters);
+    const fiberLossDb = meters / 1000 * FIBER_LOSS_DB_PER_KM;
+    return { ready: true, meters, fiberLossDb, adapterPairs, adapterLossDb, fusionSplices, spliceLossDb, fixedLossDb, assumption, lossDb: fiberLossDb + fixedLossDb };
+  }
+  function formatOpticalDbm(value) {
+    return (value >= 0 ? '+' : '') + value.toFixed(2) + ' dBm';
+  }
+  function opticalPowerRow(label, value, note) {
+    const valid = value !== null && value !== undefined && Number.isFinite(Number(value));
+    const noteHtml = note ? '<small style="display:block;color:#64748b">' + escapeOdcHtml(note) + '</small>' : '';
+    return '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 0;border-top:1px solid #e2e8f0"><span><b>' +
+      escapeOdcHtml(label) + '</b>' + noteHtml +
+      '</span><b style="font-size:20px;white-space:nowrap">' + (valid ? formatOpticalDbm(Number(value)) : 'Belum dihitung') + '</b></div>';
+  }
+  function nodeAttenuationPanelHtml(type, id) {
+    if (!['customer', 'odp', 'odc'].includes(type)) return '';
+
+    // Gunakan pembacaan OLT yang sudah tersimpan: popup langsung terbuka tanpa menunggu request baru.
+    if (type === 'customer') {
+      const customer = customers.find(item => Number(item.id) === Number(id));
+      const displayOptical = rawValue => {
+        const raw = String(rawValue == null ? '' : rawValue).trim();
+        if (!raw || /^(?:-|N\/A|N\/A dBm|null|undefined)$/i.test(raw)) return 'Belum tersedia dari OLT';
+        if (/dBm/i.test(raw)) return raw;
+        const value = Number(raw);
+        return Number.isFinite(value) ? value.toFixed(2) + ' dBm' : raw;
+      };
+      const checkedAt = customer && customer.onu_olt_optical_checked_at ? new Date(customer.onu_olt_optical_checked_at) : null;
+      const checkedLabel = checkedAt && Number.isFinite(checkedAt.getTime()) ? checkedAt.toLocaleString('id-ID') : 'Waktu pembacaan belum tersedia';
+      return '<div style="margin-top:9px;padding-top:9px;border-top:1px solid #dbe5f2;font-size:11px">' +
+        '<b>Redaman optik langsung dari OLT</b>' +
+        '<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid #e2e8f0"><span><b>RX ONT</b><small style="display:block;color:#64748b">Daya terima ONT</small></span><b style="font-size:18px">' + escapeOdcHtml(displayOptical(customer && customer.onu_olt_rx)) + '</b></div>' +
+        '<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid #e2e8f0"><span><b>TX ONT</b><small style="display:block;color:#64748b">Daya kirim ONT</small></span><b style="font-size:18px">' + escapeOdcHtml(displayOptical(customer && customer.onu_olt_tx)) + '</b></div>' +
+        '<small style="display:block;margin-top:4px;color:#64748b">Terakhir dibaca dari OLT: ' + escapeOdcHtml(checkedLabel) + ' · Data OLT diperbarui setiap 10 menit</small></div>';
+    }
+
+    // Hitung daya input/output ODP dari rantai optik OLT → ODC → ODP.
+    if (type === 'odp') {
+      const odp = odps.find(item => Number(item.id) === Number(id));
+      if (!odp) return '';
+      const configured = Number(odp.splitter_ratio);
+      const ratio = [8, 16].includes(configured) ? configured : (Number(odp.port_capacity || 16) <= 8 ? 8 : 16);
+      const odpLoss = SPLITTER_LOSS_DB[ratio];
+      const parentOdc = odcs.find(item => Number(item.id) === Number(odp.odc_id)) || null;
+      const parentOdcRatio = parentOdc ? Number(parentOdc.splitter_ratio) : null;
+      const parentOdcLoss = !parentOdc ? null : (parentOdcRatio === 8 ? SPLITTER_LOSS_DB[8] : SPLITTER_LOSS_DB[24]);
+      const feeder = parentOdc
+        ? getOpticalSegmentLoss('odc-olt', 'odc', Number(parentOdc.id), 'olt', null)
+        : { ready: false, reason: 'ODC induk belum dipetakan' };
+      const distribution = parentOdc
+        ? getOpticalSegmentLoss('odp-odc', 'odp', Number(odp.id), 'odc', Number(parentOdc.id))
+        : { ready: false, reason: 'ODC induk belum dipetakan' };
+      const odcInputPower = parentOdc && feeder.ready ? OLT_TX_REFERENCE_DBM - feeder.lossDb : null;
+      const odcOutputPower = odcInputPower !== null ? odcInputPower - parentOdcLoss : null;
+      const odpInputPower = odcOutputPower !== null && distribution.ready ? odcOutputPower - distribution.lossDb : null;
+      const odpOutputPower = odpInputPower !== null ? odpInputPower - odpLoss : null;
+      const odpInputNote = '';
+      const odpOutputNote = '';
+      return '<div style="margin-top:9px;padding-top:9px;border-top:1px solid #dbe5f2;font-size:11px">' +
+        '<b>Daya optik ODP</b>' +
+        opticalPowerRow('Input ODP', odpInputPower, odpInputNote) +
+        opticalPowerRow('Output ODP', odpOutputPower, odpOutputNote) +
+        '<small style="display:block;margin-top:5px;color:#64748b">Splitter 1:' + ratio + '</small></div>';
+    }
+
+    // Hitung daya input/output ODC dari TX acuan OLT dan rugi jalur.
+    if (type === 'odc') {
+      const odc = odcs.find(item => Number(item.id) === Number(id));
+      if (!odc) return '';
+      const configured = Number(odc.splitter_ratio);
+      const comboSplitters = configured !== 8;
+      const loss = comboSplitters ? SPLITTER_LOSS_DB[24] : SPLITTER_LOSS_DB[8];
+      const feeder = getOpticalSegmentLoss('odc-olt', 'odc', Number(odc.id), 'olt', null);
+      const inputPower = feeder.ready ? OLT_TX_REFERENCE_DBM - feeder.lossDb : null;
+      const outputPower = inputPower !== null ? inputPower - loss : null;
+      const inputNote = '';
+      const outputNote = '';
+      return '<div style="margin-top:9px;padding-top:9px;border-top:1px solid #dbe5f2;font-size:11px">' +
+        (comboSplitters ? '<b>Splitter ODC 1:2 + 1:4</b>' : '<b>Splitter ODC 1:8</b>') +
+        opticalPowerRow('Input ODC', inputPower, inputNote) +
+        opticalPowerRow('Output ODC', outputPower, outputNote) +
+        '</div>';
+    }
+    return '';
+  }
+
+  async function loadCustomerOpticalReading(customerId, force = false) {
+    const id = Number(customerId);
+    if (!Number.isSafeInteger(id) || id < 1) return;
+    const existing = opticalReadingRecords.get(id);
+    if (existing && existing.loading) return;
+    if (existing && !force && existing.data) return;
+    opticalReadingRecords.set(id, { loading: true });
+    refreshActiveDistancePopup();
+    try {
+      const response = await fetch('/tech/api/map/optical/customer/' + encodeURIComponent(id), {
+        headers: { 'Accept': 'application/json' }, credentials: 'same-origin', cache: 'no-store'
+      });
+      const data = await response.json();
+      if (!response.ok || !data || !data.ok) throw new Error(data && data.message || 'Pembacaan RX aktual gagal.');
+      opticalReadingRecords.set(id, { loading: false, data });
+    } catch (error) {
+      opticalReadingRecords.set(id, { loading: false, error: error.message || 'RX aktual belum tersedia.' });
+    }
+    refreshActiveDistancePopup();
+  }
+  window.refreshTechOpticalReading = customerId => loadCustomerOpticalReading(customerId, true);
+
+  function refreshActiveDistancePopup() {
+    const marker = activeDistancePopupMarker;
+    if (!marker || !marker.isPopupOpen || !marker.isPopupOpen() || !marker.getPopup()) return;
+    const type = marker._techNodeType;
+    const id = marker._techNodeId;
+    marker.getPopup().setContent(String(marker._techBasePopup || '') +
+      nodeDistancePanelHtml(type, id) + nodeAttenuationPanelHtml(type, id));
+  }
+  function attachDistancePanelsToTechMarkers() {
+    map.eachLayer(layer => {
+      if (!(layer instanceof L.Marker) || !layer._techNodeType || !layer.getPopup()) return;
+      const popup = layer.getPopup();
+      const original = popup.getContent();
+      layer._techBasePopup = typeof original === 'string' ? original : '';
+      layer.on('popupopen', () => {
+        activeDistancePopupMarker = layer;
+        ensureNodeCableRoutes(layer._techNodeType, layer._techNodeId);
+        // Saat ODP dibuka, hitung juga feeder OLT → ODC induk agar link budget berantai lengkap.
+        if (layer._techNodeType === 'odp') {
+          const currentOdp = odps.find(item => Number(item.id) === Number(layer._techNodeId));
+          const parentOdc = currentOdp && odcs.find(item => Number(item.id) === Number(currentOdp.odc_id));
+          if (parentOdc) ensureNodeCableRoutes('odc', parentOdc.id);
+        }
+        // Jangan mengambil RX ACS/OLT otomatis saat popup dibuka. SN sudah tersedia dari database lokal;
+        // pembacaan RX baru dijalankan jika teknisi menekan tombol "Perbarui RX aktual".
+        refreshActiveDistancePopup();
+      });
+      layer.on('popupclose', () => {
+        if (activeDistancePopupMarker === layer) activeDistancePopupMarker = null;
+      });
+    });
+  }
+  attachDistancePanelsToTechMarkers();
+
+  let topologyStatusRefreshInFlight = false;
+  async function refreshTechTopologyLiveStatus() {
+    if (topologyStatusRefreshInFlight) return;
+    topologyStatusRefreshInFlight = true;
+    const statusLabel = document.getElementById('techTopologyLiveStatus');
+    try {
+      const response = await fetch('/tech/api/map/link-status', { cache: 'no-store' });
+      const payload = await response.json();
+      if (!response.ok || !payload || !payload.ok) throw new Error('status tidak tersedia');
+
+      const statusBySerial = new Map((Array.isArray(payload.olt_statuses) ? payload.olt_statuses : [])
+        .map(row => [String(row.serial_key || String(row.serial_number || '').replace(/[^A-Z0-9]/gi, '')).toUpperCase(), row]));
+      const inventoryChecked = Boolean(payload.olt_status_checked_at);
+      customers.forEach(cust => {
+        const id = Number(cust.id);
+        const serial = String(cust.onu_sn || '').trim();
+        const key = serial.replace(/[^A-Z0-9]/gi, '').toUpperCase();
+        const row = key ? statusBySerial.get(key) : null;
+        if (row) {
+          cust.onu_olt_status = String(row.status || 'Unknown').toLowerCase();
+          cust.onu_olt_status_label = row.status === 'Online' ? 'ONLINE di OLT' : (row.status === 'Offline' ? 'OFFLINE di OLT' : 'Status OLT belum pasti');
+          cust.onu_olt_reason = row.status === 'Offline'
+            ? (String(row.offline_reason || '').trim() || 'OLT tidak mengirim penyebab spesifik. Periksa alarm LOS/RX optik dan daya ONT.')
+            : '';
+          cust.onu_olt_checked_at = row.checked_at || '';
+          cust.onu_olt_pon_id = row.pon_id == null ? null : Number(row.pon_id);
+          cust.onu_olt_onu_id = row.onu_id == null ? null : Number(row.onu_id);
+          cust.onu_olt_name = row.olt_name || '';
+          cust.onu_olt_rx = String(row.rx != null ? row.rx : (cust.onu_olt_rx || ''));
+          cust.onu_olt_tx = String(row.tx != null ? row.tx : (cust.onu_olt_tx || ''));
+          cust.onu_olt_optical_checked_at = String(row.optical_checked_at || cust.onu_olt_optical_checked_at || '');
+        } else {
+          cust.onu_olt_status = 'unknown';
+          cust.onu_olt_status_label = cust.onu_sn_match_status === 'ambiguous'
+            ? 'SN belum pasti'
+            : (serial ? (inventoryChecked ? 'SN tidak ditemukan di inventaris OLT' : 'Menunggu pembacaan status OLT') : 'SN belum tersedia');
+          cust.onu_olt_reason = cust.onu_sn_match_status === 'ambiguous'
+            ? 'Username PPPoE cocok ke beberapa serial ACS; perlu verifikasi SN.'
+            : (serial && inventoryChecked ? 'SN tidak ditemukan pada inventaris OLT terakhir; ini bukan bukti bahwa ONT mati.' : '');
+          cust.onu_olt_pon_id = null;
+          cust.onu_olt_onu_id = null;
+          cust.onu_olt_name = '';
+        }
+        const marker = customerMarkers.get(id);
+        if (marker) marker.setIcon(buildTechCustomerIcon(cust));
+        syncTechOltPopup(cust);
+      });
+      refreshActiveDistancePopup();
+      if (statusLabel) statusLabel.textContent = payload.stale
+        ? 'Status terakhir ' + (payload.checkedAt ? new Date(payload.checkedAt).toLocaleTimeString('id-ID') : 'waktu tidak tersedia') + ' • login MikroTik dibatasi; warna memakai data terakhir'
+        : 'Status PPPoE diperiksa pukul ' + new Date(payload.checkedAt || Date.now()).toLocaleTimeString('id-ID') + ' • diperbarui otomatis tiap 1 menit';
+
+      const pppoeSummary = { online: 0, offline: 0, unknown: 0 };
+      let missingUsername = 0, missingRouter = 0, unavailableRouter = 0;
+      Object.values(payload.customers || {}).forEach(item => {
+        const sessionState = item && ['online','offline'].includes(item.pppoeState) ? item.pppoeState : 'unknown';
+        pppoeSummary[sessionState]++;
+        if (sessionState === 'unknown') {
+          if (item && item.pppoeReason === 'username_missing') missingUsername++;
+          else if (item && item.pppoeReason === 'router_missing') missingRouter++;
+          else if (item && ['router_unavailable','router_disabled'].includes(item.pppoeReason)) unavailableRouter++;
+        }
+      });
+      const countNode = (id, value) => { const node = document.getElementById(id); if (node) node.textContent = String(value); };
+      countNode('techPppoeOnlineCount', pppoeSummary.online);
+      countNode('techPppoeOfflineCount', pppoeSummary.offline);
+      countNode('techPppoeUnknownCount', pppoeSummary.unknown);
+      const metaNode = document.getElementById('techPppoeStatusMeta');
+      if (metaNode) {
+        const issues = [];
+        if (missingUsername) issues.push('username kosong ' + missingUsername);
+        if (missingRouter) issues.push('router belum dipilih ' + missingRouter);
+        if (unavailableRouter) issues.push('router tidak terbaca ' + unavailableRouter);
+        metaNode.textContent = payload.stale
+          ? 'MikroTik menolak pembacaan baru. Status memakai hasil terakhir yang berhasil; cocokkan waktu pembaruan sebelum diagnosis.'
+          : (issues.length ? 'Perlu dilengkapi: ' + issues.join(' • ') : 'Semua status berhasil diperiksa dari router yang terhubung.');
+      }
+
+      Object.entries(payload.customers || {}).forEach(([customerId, item]) => {
+        const state = item && ['online','offline','unknown','isolated'].includes(item.state) ? item.state : 'unknown';
+        const numericCustomerId = Number(customerId);
+        currentCustomerCableStates.set(numericCustomerId, state);
+        currentCustomerCableLive.set(numericCustomerId, state === 'online' && !Boolean(item && item.stale));
+        let line = customerLinkLines.get(numericCustomerId);
+        const cust = customers.find(c => Number(c.id) === numericCustomerId);
+        if (cust) {
+          cust.pppoe_state = item && ['online','offline','unknown'].includes(item.pppoeState) ? item.pppoeState : 'unknown';
+          cust.pppoe_reason = item && item.pppoeReason ? item.pppoeReason : '';
+          cust.pppoe_state_stale = Boolean(item && item.stale);
+          syncTechOltPopup(cust);
+        }
+        const marker = customerMarkers.get(numericCustomerId);
+        if (marker && cust) marker.setIcon(buildTechCustomerIcon(cust, state === 'isolated', state));
+        if (state === 'isolated') {
+          currentCustomerCableLive.set(numericCustomerId, false);
+          if (line) { map.removeLayer(line); customerLinkLines.delete(numericCustomerId); }
+          cableLengthRecords.delete('customer:' + numericCustomerId);
+          updateCableLengthSummary();
+          return;
+        }
+        if (!line && cust) line = createTechCustomerCable(cust);
+        if (!line) return;
+        const color = state === 'offline' ? '#ef4444' : (state === 'online' ? '#2563eb' : '#f59e0b');
+        const description = state === 'offline' ? 'PPPoE DOWN — perlu pemeriksaan layanan/jalur akses' : (state === 'online' ? 'PPPoE UP' : 'Status sesi PPPoE belum terverifikasi; koneksi MikroTik belum terbaca');
+        line.setStyle({ color, dashArray: state === 'offline' ? '8,6' : '10,10', opacity: 0.95 });
+        setCableLineAnimation(line, state === 'online' && !Boolean(item && item.stale));
+        currentCustomerCableLive.set(numericCustomerId, state === 'online' && !Boolean(item && item.stale));
+        if (line.getTooltip()) line.setTooltipContent('Drop FO · ODP → ONT/Pelanggan • ' + description + ' • panjang rute estimasi ' + formatCableDistance(line._cableMeters));
+      });
+
+      topologyLinks.forEach(link => {
+        const line = link._leafletLine;
+        if (!line) return;
+        if (link.segment_type === 'odp-odc') {
+          const summary = (payload.odps || {})[String(link.source_id)];
+          const hasOnlineCustomer = summary && Number(summary.onlineCount) > 0;
+          const allMappedConfirmedOffline = summary && Number(summary.offlineCount) > 0 && Number(summary.onlineCount) === 0 && Number(summary.unknownCount) === 0;
+          if (hasOnlineCustomer) {
+            line.setStyle({ color: link._baseColor, dashArray: '10,8', opacity: 0.9 });
+            if (line.getTooltip()) line.setTooltipContent('Distribusi FO • ADA PELANGGAN ONLINE; alarm merah tidak aktif • panjang rute estimasi ' + formatCableDistance(line._cableMeters));
+          } else if (link._manualInactive) {
+            line.setStyle({ color: '#ef4444', dashArray: '8,8' });
+            if (line.getTooltip()) line.setTooltipContent(link._baseTooltip + ' • belum ada pelanggan online pada ODP ini');
+          } else if (allMappedConfirmedOffline) {
+            line.setStyle({ color: '#ef4444', dashArray: '8,6', opacity: 1 });
+            if (line.getTooltip()) line.setTooltipContent('Distribusi FO • ALARM: seluruh pelanggan non-isolir yang terpetakan terkonfirmasi PPPoE DOWN. Ini indikasi gangguan layanan, bukan bukti pasti kabel FO putus • panjang rute estimasi ' + formatCableDistance(line._cableMeters));
+          } else {
+            line.setStyle({ color: link._baseColor, dashArray: '10,8', opacity: 0.9 });
+            let note = 'data status sesi PPPoE belum lengkap';
+            if (summary && Number(summary.totalCount) > 0 && Number(summary.unknownCount) === 0 && Number(summary.offlineCount) === 0) note = 'tidak ada pelanggan non-isolir yang terkonfirmasi offline; kabel fisik belum dipantau';
+            if (line.getTooltip()) line.setTooltipContent('Distribusi FO • ' + note + ' • panjang rute estimasi ' + formatCableDistance(line._cableMeters));
+          }
+        } else if (link._manualInactive) {
+          line.setStyle({ color: '#ef4444', dashArray: '8,8' });
+          if (line.getTooltip()) line.setTooltipContent(link._baseTooltip);
+        } else {
+          line.setStyle({ color: link._baseColor, dashArray: '10,8' });
+          if (line.getTooltip()) line.setTooltipContent(link._baseTooltip);
+        }
+      });
+      if (statusLabel) statusLabel.textContent = payload.stale
+        ? 'Status terakhir ' + (payload.checkedAt ? new Date(payload.checkedAt).toLocaleTimeString('id-ID') : 'waktu tidak tersedia') + ' • login MikroTik dibatasi; warna memakai data terakhir'
+        : 'Status PPPoE diperiksa pukul ' + new Date(payload.checkedAt || Date.now()).toLocaleTimeString('id-ID') + ' • diperbarui otomatis tiap 1 menit';
+    } catch (_) {
+      if (statusLabel) statusLabel.textContent = 'Status PPPoE belum berhasil diperbarui. Peta mempertahankan status terakhir; periksa koneksi MikroTik.';
+      const metaNode = document.getElementById('techPppoeStatusMeta');
+      if (metaNode) metaNode.textContent = 'Gagal memperbarui sesi. Status pada peta adalah hasil pemeriksaan terakhir yang berhasil.';
+    } finally {
+      topologyStatusRefreshInFlight = false;
+    }
+  }
+  refreshTechTopologyLiveStatus();
+  setInterval(refreshTechTopologyLiveStatus, 60 * 1000);
+
+  // Geolocation for Tech
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(position => {
+      const myLat = position.coords.latitude;
+      const myLng = position.coords.longitude;
+      
+      L.marker([myLat, myLng], {
+        icon: L.divIcon({
+          html: '<i class="bi bi-person-circle text-white" style="font-size:24px; text-shadow: 0 0 10px #3b82f6"></i>',
+          className: 'custom-div-icon',
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
+        })
+      }).addTo(map).bindPopup("<div class='popup-dark text-center'><b>Posisi Anda</b></div>");
+    });
+  }
+
+  // Auto zoom
+  const visibleMapMarkers = Object.values(map._layers || {}).filter(l => l instanceof L.Marker || l instanceof L.CircleMarker);
+  const group = L.featureGroup(visibleMapMarkers);
+  if (group.getLayers().length > 0) {
+    map.fitBounds(group.getBounds().pad(0.1));
+  }
+
+  // Fix for blank map on load
+  setTimeout(() => {
+    map.invalidateSize();
+    queueVisibleRoadRoutes();
+    updateCableLengthSummary();
+  }, 500);
+  }
+</script>
+
+<%- include('partials/bottom_nav') %>

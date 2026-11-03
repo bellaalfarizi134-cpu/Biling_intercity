@@ -1,0 +1,19 @@
+  </div> <!-- End container -->
+
+  <nav class="bottom-nav" aria-label="Menu teknisi">
+    <a href="/tech" class="nav-item <%= activePage === 'dashboard' ? 'active' : '' %>"><i class="bi bi-house-door-fill"></i><span>Beranda</span></a>
+    <a href="/tech/ppoe" class="nav-item <%= activePage === 'ppoe' ? 'active' : '' %>"><i class="bi bi-router"></i><span>PPPoE</span></a>
+    <a href="/tech/monitoring" class="nav-item <%= activePage === 'monitoring' ? 'active' : '' %>"><i class="bi bi-activity"></i><span>Monitoring</span></a>
+    <a href="/tech/map" class="nav-item <%= activePage === 'map' ? 'active' : '' %>"><i class="bi bi-geo-alt"></i><span>Peta Pelanggan</span></a>
+  </nav>
+
+  <script>
+    setTimeout(() => {
+      document.querySelectorAll('.alert').forEach(a => {
+        const bsAlert = new bootstrap.Alert(a);
+        bsAlert.close();
+      });
+    }, 4000);
+  </script>
+</body>
+</html>

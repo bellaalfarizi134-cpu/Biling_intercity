@@ -1,0 +1,617 @@
+<%- include('partials/header') %>
+<style>
+  .binding-wrap{max-width:720px;margin:0 auto}.binding-card{background:#fff;border:1px solid #e1e9f4;border-radius:18px;padding:18px;box-shadow:0 8px 24px rgba(22,54,96,.06)}
+  .binding-customer-results{position:absolute;left:0;right:0;top:100%;z-index:1060;max-height:280px;overflow:auto;border-radius:12px;background:#fff}.binding-customer-results .list-group-item{padding:10px 12px;cursor:pointer}.binding-port-ok{color:#198754}.binding-port-warn{color:#b45309}.binding-port-error{color:#b91c1c}
+  .binding-head{display:flex;gap:12px;align-items:center;margin-bottom:16px}.binding-icon{width:48px;height:48px;display:grid;place-items:center;border-radius:14px;background:#e8f1ff;color:#1455b4;font-size:24px}.binding-head h2{font-size:19px;font-weight:850;margin:0;color:#18365e}.binding-head p{font-size:12px;color:#6b7b91;margin:4px 0 0}
+  .binding-card label{font-size:12px;font-weight:750;color:#41536d;margin-bottom:6px}.binding-card .form-control,.binding-card .form-select{min-height:46px;background:#fff;color:#172b4d;border-color:#cbd7e6;border-radius:11px}.binding-note{background:#f1f6ff;border:1px solid #dbe8ff;border-radius:12px;padding:12px;font-size:12px;color:#365477;line-height:1.5}.binding-submit{min-height:49px;border-radius:12px;background:#0752b9;color:#fff;font-weight:800;border:0}.binding-submit:active{transform:scale(.99)}
+  .binding-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 0 16px}.binding-step{display:flex;align-items:center;gap:7px;padding:10px 8px;border:1px solid #d8e1ed;border-radius:12px;background:#f8fafc;color:#718096;font-size:11px;font-weight:750}.binding-step span{display:grid;place-items:center;flex:none;width:25px;height:25px;border-radius:50%;background:#e2e8f0;color:#475569;font-size:12px}.binding-step.is-active{border-color:#7aa8e8;background:#edf5ff;color:#174a91}.binding-step.is-active span,.binding-step.is-done span{background:#0752b9;color:#fff}.binding-step.is-done{color:#245c40;border-color:#b8dfc8;background:#f0faf4}.binding-stage-title{font-size:15px;font-weight:850;color:#18365e;margin:0 0 12px}.binding-stage-actions{display:flex;gap:8px;margin:0 0 12px}.binding-stage-actions .btn{flex:1;min-height:40px;border-radius:10px} @media(max-width:420px){.binding-step{display:block;text-align:center;padding:8px 3px}.binding-step span{margin:0 auto 5px}.binding-step{font-size:10px}}
+
+  .binding-overlay{position:fixed;inset:0;z-index:99999;background:rgba(9,22,42,.72);display:none;align-items:center;justify-content:center;padding:22px;backdrop-filter:blur(4px)}
+  .binding-overlay.show{display:flex}.binding-modal{width:100%;max-width:360px;background:#fff;border-radius:22px;padding:26px 22px;text-align:center;box-shadow:0 22px 70px rgba(0,0,0,.3)}
+  .binding-done-icon{width:64px;height:64px;display:grid;place-items:center;margin:0 auto 16px;border-radius:50%;background:#dcfce7;color:#15803d;font-size:34px}
+  .binding-done-title{font-size:20px;font-weight:850;color:#166534;margin:0 0 8px}
+  .binding-done-message{font-size:13px;color:#475569;line-height:1.6;margin:0 0 20px}
+  .binding-done-ok{min-height:46px;width:100%;border:0;border-radius:12px;background:#0752b9;color:#fff;font-weight:800}
+  .binding-live-status{white-space:pre-line;overflow-wrap:anywhere}
+  .binding-loader{width:58px;height:58px;border:5px solid #dbeafe;border-top-color:#0752b9;border-radius:50%;animation:bindingSpin .8s linear infinite;margin:0 auto 18px}
+  @keyframes bindingSpin{to{transform:rotate(360deg)}}.binding-modal h3{font-size:19px;font-weight:850;color:#18365e;margin:0 0 8px}.binding-modal p{font-size:13px;color:#61718a;margin:0;line-height:1.6}.binding-progress{height:6px;background:#e8eef7;border-radius:10px;overflow:hidden;margin-top:18px}.binding-progress span{display:block;height:100%;width:35%;background:#0752b9;border-radius:10px;animation:bindingProgress 2s ease-in-out infinite alternate}@keyframes bindingProgress{from{width:20%}to{width:88%}}.binding-elapsed-row{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:12px;color:#64748b;font-size:11px}.binding-elapsed-row strong{color:#18365e;font-size:13px;font-variant-numeric:tabular-nums}
+</style>
+<div class="binding-overlay" id="bindingOverlay" role="dialog" aria-modal="true" aria-live="polite"><div class="binding-modal"><div class="binding-loader"></div><h3>Binding sedang diproses</h3><p id="bindingProgressText">Menyiapkan binding…</p><div class="binding-progress"><span></span></div><div class="binding-elapsed-row"><span id="bindingProgressStage">Menunggu respons ONT</span><strong id="bindingElapsedTime">00:00</strong></div></div></div>
+<div class="binding-overlay" id="bindingDoneOverlay" role="dialog" aria-modal="true" aria-labelledby="bindingDoneTitle">
+  <div class="binding-modal">
+    <div class="binding-done-icon"><i class="bi bi-check-circle-fill"></i></div>
+    <h3 class="binding-done-title" id="bindingDoneTitle">Binding selesai</h3>
+    <p class="binding-done-message" id="bindingDoneText">PPPoE aktif kembali dan ping internet berhasil.</p>
+    <button type="button" class="binding-done-ok" id="bindingDoneOk">Oke</button>
+  </div>
+</div>
+<div class="binding-wrap py-3">
+  <div class="d-flex justify-content-between align-items-center mb-3"><a href="/tech" class="btn btn-outline-secondary btn-sm rounded-3"><i class="bi bi-arrow-left me-1"></i>Dashboard</a><span class="badge text-bg-primary">HSGQ</span></div>
+  <% if (msg && !watchBindingStatus) { %><div class="alert alert-<%= msg.type === 'error' ? 'danger' : 'success' %> rounded-4" role="alert"><%= msg.text %></div><% } %>
+  <div id="bindingAsyncStatus" class="alert alert-info rounded-4 binding-live-status" role="status" aria-live="polite" hidden></div>
+  <div class="binding-card">
+    <div class="binding-head"><span class="binding-icon"><i class="bi bi-router-fill"></i></span><div><h2>Binding Saja</h2><p>Daftarkan ONT ke OLT. Setelah itu, sistem mencoba menyiapkan PPPoE dan memeriksa koneksi internet.</p></div></div>
+    <form method="POST" action="/tech/binding-only" id="bindingOnlyForm">
+      <input type="hidden" name="action" id="bindingAction" value="bind">
+      <div class="binding-steps" aria-label="Tahapan Binding">
+        <div class="binding-step is-active" id="bindingStepNav1"><span>1</span><div>Pilih pelanggan</div></div>
+        <div class="binding-step" id="bindingStepNav2"><span>2</span><div>Data pelanggan</div></div>
+        <div class="binding-step" id="bindingStepNav3"><span>3</span><div>Proses Binding</div></div>
+      </div>
+      <section id="bindingStep1">
+      <h3 class="binding-stage-title">Langkah 1 · Pilih pelanggan</h3>
+      <div class="mb-3 position-relative" id="bindingCustomerPicker">
+        <label for="bindingCustomerSearch">Cari &amp; pilih pelanggan</label>
+        <input type="search" class="form-control mb-1" id="bindingCustomerSearch" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="bindingCustomerResults" aria-expanded="false" placeholder="Ketik nama pelanggan">
+        <div id="bindingCustomerResults" class="list-group binding-customer-results shadow-sm" role="listbox" hidden></div>
+        <select class="form-select d-none" id="bindingCustomer" name="customer_id" required aria-hidden="true">
+          <option value="">Pilih pelanggan…</option>
+          <% (customers || []).forEach(c => { %><option value="<%= c.id %>" data-search="<%= [c.name, c.pppoe_username, c.phone, c.id].filter(Boolean).join(' ') %>" data-customer-name="<%= c.name || '' %>" data-pppoe="<%= c.pppoe_username || '' %>" data-olt-id="<%= c.olt_id || '' %>" data-odp-id="<%= c.odp_id || '' %>" data-pon-port="<%= c.pon_port || '' %>" data-lat="<%= c.lat || '' %>" data-lng="<%= c.lng || '' %>" data-complete="<%= c.binding_complete ? '1' : '0' %>" data-olt-ready="<%= c.olt_ready ? '1' : '0' %>" <%= Number(c.id) === Number(selectedCustomerId) ? 'selected' : '' %>><%= c.pppoe_username || c.name %></option><% }) %>
+        </select>
+      </div>
+      </section>
+      <div class="binding-note mb-3" id="bindingNetworkSetup" hidden>
+        <h3 class="binding-stage-title">Langkah 2 · Data pelanggan lan jaringan</h3>
+        <div class="binding-stage-actions"><button type="button" class="btn btn-outline-secondary" id="bindingBackToCustomer"><i class="bi bi-arrow-left me-1"></i>Ganti pelanggan</button></div>
+        <div class="mb-3"><label for="bindingOlt">OLT</label><select class="form-select" id="bindingOlt" name="olt_id"><option value="">Pilih OLT…</option><% (olts || []).forEach(o => { %><option value="<%= o.id %>" <%= bindingDraft && Number(bindingDraft.olt_id) === Number(o.id) ? 'selected' : '' %>><%= o.name %></option><% }) %></select></div>
+        <div class="mb-3"><label for="bindingOdp">ODP</label><select class="form-select" id="bindingOdp" name="odp_id"><option value="">Pilih ODP…</option><% (odps || []).forEach(d => { %><option value="<%= d.id %>" data-olt-id="<%= d.olt_id || '' %>" data-lat="<%= d.lat == null ? '' : d.lat %>" data-lng="<%= d.lng == null ? '' : d.lng %>" data-base-label="<%= d.name %><%= d.olt_id ? '' : ' · Belum terhubung' %>" <%= bindingDraft && Number(bindingDraft.odp_id) === Number(d.id) ? 'selected' : '' %>><%= d.name %><%= d.olt_id ? '' : ' · Belum terhubung' %></option><% }) %></select><div class="form-text" id="bindingOdpDistance" role="status" aria-live="polite">Batas jarak pelanggan ke ODP maksimal 200 meter. Jika lebih jauh, pilih ODP lain yang lebih dekat. GPS pelanggan dan lokasi GPS ODP wajib tersedia.</div></div>
+        <div class="mb-3"><label for="bindingPonPort">Port ODP (1–8)</label><input class="form-control" id="bindingPonPort" name="pon_port" type="number" min="1" max="8" step="1" value="<%= bindingDraft && bindingDraft.pon_port || '' %>" placeholder="Pilih port 1–8"><div class="form-text" id="bindingPortStatus" aria-live="polite">Pilih ODP untuk memeriksa port yang masih tersedia.</div></div>
+        <div class="mb-2"><label for="bindingLat">Latitude</label><input class="form-control" id="bindingLat" name="lat" inputmode="decimal" value="<%= bindingDraft && bindingDraft.lat || '' %>" ></div>
+        <div class="mb-3"><label for="bindingLng">Longitude</label><input class="form-control" id="bindingLng" name="lng" inputmode="decimal" value="<%= bindingDraft && bindingDraft.lng || '' %>" ><button type="button" class="btn btn-outline-primary btn-sm mt-2" id="bindingUseGps"><i class="bi bi-geo-alt me-1"></i>Ambil GPS saat ini</button><div class="form-text" id="bindingGpsStatus" aria-live="polite"></div></div>
+        <button class="binding-submit w-100" type="submit" formnovalidate value="save_network" id="bindingSaveNetwork"><i class="bi bi-save me-2"></i>Simpan Data &amp; Lanjut ke Binding</button>
+      </div>
+      <button type="button" class="btn btn-outline-secondary w-100 mb-3" id="bindingEditNetwork" hidden><i class="bi bi-pencil-square me-1"></i>Ubah Data Jaringan</button>
+      <section id="bindingStep3" hidden>
+      <h3 class="binding-stage-title">Langkah 3 · Daftarkan ONT</h3>
+      <div class="binding-note mb-3">Data jaringan yang sudah tersimpan digunakan otomatis. Tidak perlu diisi ulang kecuali memang ada perubahan.</div>
+      <div class="binding-stage-actions"><button type="button" class="btn btn-outline-secondary" id="bindingBackToNetwork"><i class="bi bi-arrow-left me-1"></i>Kembali ke data pelanggan</button></div>
+      <div class="mb-3"><label for="bindingVendor">Merek ONT</label><select class="form-select" name="onu_vendor" id="bindingVendor"><option value="FIBERHOME" <%= !bindingDraft || bindingDraft.onu_vendor === 'FIBERHOME' ? 'selected' : '' %>>FiberHome</option><option value="ZTE" <%= bindingDraft && bindingDraft.onu_vendor === 'ZTE' ? 'selected' : '' %>>ZTE</option><option value="HUAWEI" <%= bindingDraft && bindingDraft.onu_vendor === 'HUAWEI' ? 'selected' : '' %>>Huawei</option><option value="CMHI" <%= bindingDraft && bindingDraft.onu_vendor === 'CMHI' ? 'selected' : '' %>>CMHI</option><option value="NOKIA" <%= bindingDraft && bindingDraft.onu_vendor === 'NOKIA' ? 'selected' : '' %>>Nokia / Alcatel</option><option value="OTHER" <%= bindingDraft && bindingDraft.onu_vendor === 'OTHER' ? 'selected' : '' %>>Vendor lain / SN asli</option></select></div>
+      <div class="binding-note mb-3" id="bindingVendorRouteNote" role="status" aria-live="polite">FiberHome: WAN melalui TR-069/ACS dan SN harus terdaftar di ACS.</div>
+      <div class="mb-3"><label for="bindingSn">Nomor seri ONT (SN)</label><input class="form-control text-uppercase" id="bindingSn" name="onu_sn" value="<%= bindingDraft && bindingDraft.onu_sn || '' %>" minlength="12" maxlength="16" autocomplete="off" autocapitalize="characters">
+        <button type="button" class="btn btn-outline-primary w-100 mt-2" id="bindingReadSn"><i class="bi bi-search me-1"></i>Baca SN dari OLT</button>
+        <select class="form-select mt-2" id="bindingSnDetected" aria-label="SN yang terdeteksi di OLT" hidden><option value="">Pilih SN yang terdeteksi…</option></select>
+        <div class="form-text" id="bindingSnReadStatus" role="status" aria-live="polite"></div>
+      </div>
+      
+      <button class="binding-submit w-100" type="submit" formnovalidate value="bind" id="bindingSubmit"><i class="bi bi-link-45deg me-2"></i>Daftarkan ONT ke OLT</button>
+      </section>
+    </form>
+  </div>
+</div>
+<script>
+(() => {
+ const form=document.getElementById('bindingOnlyForm');
+ const stage1=document.getElementById('bindingStep1');
+ const stage3=document.getElementById('bindingStep3');
+ const stageNav=[document.getElementById('bindingStepNav1'),document.getElementById('bindingStepNav2'),document.getElementById('bindingStepNav3')];
+ const startBindingStep=<%= startBindingStep ? 'true' : 'false' %>;
+ const watchBindingStatus=<%= watchBindingStatus ? 'true' : 'false' %>;
+ const watchCustomerId=<%= Number(selectedCustomerId) || 0 %>;
+ const asyncStatusPanel=document.getElementById('bindingAsyncStatus');
+ const doneOverlay=document.getElementById('bindingDoneOverlay');
+ const doneText=document.getElementById('bindingDoneText');
+ const doneOk=document.getElementById('bindingDoneOk');
+ const bindingOverlay=document.getElementById('bindingOverlay');
+ const bindingProgressText=document.getElementById('bindingProgressText');
+ const bindingProgressStage=document.getElementById('bindingProgressStage');
+ const bindingElapsedTime=document.getElementById('bindingElapsedTime');
+ let bindingOverlayStartedAt=0;
+ let bindingElapsedTicker=null;
+ let bindingPreviousOverflow='';
+ function updateBindingElapsed(){
+   const seconds=Math.max(0,Math.floor((Date.now()-bindingOverlayStartedAt)/1000));
+   const mins=String(Math.floor(seconds/60)).padStart(2,'0');
+   const secs=String(seconds%60).padStart(2,'0');
+   if(bindingElapsedTime)bindingElapsedTime.textContent=mins+':'+secs;
+ }
+ function showBindingProgress(message,stage){
+   if(!bindingOverlay)return;
+   if(!bindingOverlay.classList.contains('show')){
+     bindingOverlayStartedAt=Date.now();
+     bindingPreviousOverflow=document.body.style.overflow||'';
+     document.body.style.overflow='hidden';
+     bindingOverlay.classList.add('show');
+     if(bindingElapsedTicker)window.clearInterval(bindingElapsedTicker);
+     bindingElapsedTicker=window.setInterval(updateBindingElapsed,1000);
+   }
+   if(bindingProgressText&&message)bindingProgressText.textContent=message;
+   if(bindingProgressStage&&stage)bindingProgressStage.textContent=stage;
+   updateBindingElapsed();
+ }
+ function hideBindingProgress(){
+   if(bindingOverlay)bindingOverlay.classList.remove('show');
+   document.body.style.overflow=bindingPreviousOverflow;
+   if(bindingElapsedTicker){window.clearInterval(bindingElapsedTicker);bindingElapsedTicker=null;}
+ }
+ let currentBindingStep=1;
+ const customerSelect=document.getElementById('bindingCustomer');
+ const customerSearch=document.getElementById('bindingCustomerSearch');
+ const customerResults=document.getElementById('bindingCustomerResults');
+ const allCustomerOptions=Array.from(customerSelect.options).slice(1);
+ const customerPlaceholder=customerSelect.options[0].cloneNode(true);
+ const setup=document.getElementById('bindingNetworkSetup');
+ const editButton=document.getElementById('bindingEditNetwork');
+ const bindButton=document.getElementById('bindingSubmit');
+ const saveButton=document.getElementById('bindingSaveNetwork');
+ const actionInput=document.getElementById('bindingAction');
+ const oltSelect=document.getElementById('bindingOlt');
+ const odpSelect=document.getElementById('bindingOdp');
+ const portInput=document.getElementById('bindingPonPort');
+ const portStatus=document.getElementById('bindingPortStatus');
+ const latInput=document.getElementById('bindingLat');
+ const lngInput=document.getElementById('bindingLng');
+ const gpsStatus=document.getElementById('bindingGpsStatus');
+ const odpDistanceStatus=document.getElementById('bindingOdpDistance');
+ function distanceMetersBetween(lat1,lng1,lat2,lng2){
+   const rad=value=>value*Math.PI/180;
+   const dLat=rad(lat2-lat1),dLng=rad(lng2-lng1);
+   const a=Math.sin(dLat/2)**2+Math.cos(rad(lat1))*Math.cos(rad(lat2))*Math.sin(dLng/2)**2;
+   return 6371000*2*Math.atan2(Math.sqrt(a),Math.sqrt(Math.max(0,1-a)));
+ }
+ function getSelectedOdpDistance(){
+   const option=odpSelect.options[odpSelect.selectedIndex];
+   if(!option||!option.value)return {ok:false,message:'Pilih ODP dahulu. Batas jarak maksimal 200 meter.'};
+   const latText=String(latInput.value||'').trim(),lngText=String(lngInput.value||'').trim();
+   const odpLatText=String(option.dataset.lat||'').trim(),odpLngText=String(option.dataset.lng||'').trim();
+   const lat=Number(latText),lng=Number(lngText),odpLat=Number(odpLatText),odpLng=Number(odpLngText);
+   if(!latText||!lngText||!Number.isFinite(lat)||!Number.isFinite(lng)||lat < -90||lat>90||lng < -180||lng>180){
+     return {ok:false,message:'GPS pelanggan wajib tersedia. Tekan Ambil GPS saat berada di lokasi pelanggan.'};
+   }
+   if(!odpLatText||!odpLngText||!Number.isFinite(odpLat)||!Number.isFinite(odpLng)||odpLat < -90||odpLat>90||odpLng < -180||odpLng>180){
+     return {ok:false,message:'Koordinat GPS ODP belum tersedia/valid. Minta admin melengkapi posisi ODP.'};
+   }
+   const distance=distanceMetersBetween(lat,lng,odpLat,odpLng);
+   if(!Number.isFinite(distance))return {ok:false,message:'Jarak gagal dihitung. Periksa koordinat GPS.'};
+   if(distance>200+1e-6)return {ok:false,distance,message:'Jarak pelanggan ke ODP sekitar '+Math.round(distance)+' meter. Batas 200 meter; pilih ODP lain yang lebih dekat.'};
+   return {ok:true,distance,message:'Jarak pelanggan ke ODP '+Math.round(distance)+' m — memenuhi batas 200 m.'};
+ }
+ function refreshOdpDistance(){
+   if(!odpDistanceStatus)return;
+   const selectedValue=String(odpSelect.value||'');
+   const customerLatText=String(latInput.value||'').trim(),customerLngText=String(lngInput.value||'').trim();
+   const customerLat=Number(customerLatText),customerLng=Number(customerLngText);
+   const customerCoordsValid=customerLatText!==''&&customerLngText!==''&&Number.isFinite(customerLat)&&Number.isFinite(customerLng)&&customerLat>=-90&&customerLat<=90&&customerLng>=-180&&customerLng<=180;
+   const chosenOlt=String(oltSelect.value||'');
+   Array.from(odpSelect.options).forEach((option,index)=>{
+     if(index===0)return;
+     const assigned=String(option.dataset.oltId||'');
+     const sameOlt=!chosenOlt||!assigned||assigned===chosenOlt;
+     const baseLabel=String(option.dataset.baseLabel||option.textContent||'');
+     option.textContent=baseLabel;
+     option.title='';
+     if(!sameOlt){option.disabled=true;option.hidden=true;return;}
+     option.hidden=false;
+     const odpLatText=String(option.dataset.lat||'').trim(),odpLngText=String(option.dataset.lng||'').trim();
+     const odpLat=Number(odpLatText),odpLng=Number(odpLngText);
+     if(!customerCoordsValid){
+       option.disabled=false;
+       return;
+     }
+     if(!odpLatText||!odpLngText||!Number.isFinite(odpLat)||!Number.isFinite(odpLng)||odpLat < -90||odpLat>90||odpLng < -180||odpLng>180){
+       option.disabled=true;
+       option.textContent=baseLabel+' · GPS ODP belum tersedia';
+       option.title='ODP tidak dapat dipakai sebelum admin mengisi koordinat GPS.';
+       return;
+     }
+     const distance=distanceMetersBetween(customerLat,customerLng,odpLat,odpLng);
+     const tooFar=distance>200+1e-6;
+     option.textContent=baseLabel+' · '+Math.round(distance)+' m'+(tooFar?' (di luar 200 m — pilih ODP lain)':'');
+     option.title=tooFar?'Tidak bisa dipakai: jarak lebih dari 200 meter. Pilih ODP lain yang lebih dekat.':'Jarak '+Math.round(distance)+' meter.';
+     // ODP yang terlalu jauh tidak dapat dipakai; yang saat ini tersimpan tetap terlihat dengan peringatan agar teknisi dapat menggantinya.
+     option.disabled=tooFar;
+   });
+   const result=getSelectedOdpDistance();
+   odpDistanceStatus.textContent=result.message;
+   odpDistanceStatus.className='form-text '+(result.ok?'binding-port-ok':(result.distance>200+1e-6?'binding-port-error':'binding-port-warn'));
+ }
+ const snInput=document.getElementById('bindingSn');
+ const vendorSelect=document.getElementById('bindingVendor');
+ const vendorRouteNote=document.getElementById('bindingVendorRouteNote');
+ function updateVendorRouteNote(){
+   if(!vendorRouteNote||!vendorSelect)return;
+   if(vendorSelect.value==='FIBERHOME'){
+     vendorRouteNote.className='binding-note mb-3';
+     vendorRouteNote.textContent='FiberHome: sistem memeriksa firmware terlebih dahulu dan menjalankan pembaruan bila diperlukan. Setelah ONT terbaca di ACS, sistem menyiapkan PPPoE. Jika PPPoE sudah aktif, ONT direstart melalui OLT lalu koneksi internet diuji.';
+   }else if(vendorSelect.value==='ZTE'||vendorSelect.value==='HUAWEI'||vendorSelect.value==='CMHI'){
+     vendorRouteNote.className='binding-note mb-3';
+     vendorRouteNote.textContent='ZTE/Huawei/CMHI: setelah ONT terdaftar, sistem menyiapkan PPPoE melalui OLT, memeriksa sesi di MikroTik, lalu menjalankan pemeriksaan koneksi. Add WAN tidak dikirim ulang jika sudah tercatat.';
+   }else{
+     vendorRouteNote.className='alert alert-warning mb-3';
+     vendorRouteNote.textContent='Aktivasi otomatis untuk vendor ini belum didukung pada OLT yang dipilih. ONT belum diubah. Hubungi admin jaringan sebelum melanjutkan.';
+   }
+ }
+ function applyVendorFromSerial(){
+   const prefix=String(snInput.value||'').trim().toUpperCase().slice(0,4);
+   if(prefix==='CMHI'&&Array.from(vendorSelect.options).some(option=>option.value==='CMHI'))vendorSelect.value='CMHI';
+   updateVendorRouteNote();
+ }
+ snInput.addEventListener('input',applyVendorFromSerial);
+ vendorSelect.addEventListener('change',updateVendorRouteNote);
+ applyVendorFromSerial();
+ const readSnButton=document.getElementById('bindingReadSn');
+ const detectedSnSelect=document.getElementById('bindingSnDetected');
+ const snReadStatus=document.getElementById('bindingSnReadStatus');
+ let detectedSnItems=[];
+ let forceEdit=false;
+ // Compatibility: older Android WebView may not expose SubmitEvent.submitter.
+ let lastSubmitAction='bind';
+ saveButton.addEventListener('click',()=>{lastSubmitAction='save_network';});
+ bindButton.addEventListener('click',()=>{lastSubmitAction='bind';});
+ let preserveDraft=<%= bindingDraft && Number(bindingDraft.customer_id) === Number(selectedCustomerId) ? 'true' : 'false' %>;
+
+ function filterOdps(){
+   const chosenOlt=String(oltSelect.value||'');
+   Array.from(odpSelect.options).forEach((option,index)=>{
+     if(index===0){option.hidden=false;option.disabled=false;return;}
+     const assigned=String(option.dataset.oltId||'');
+     const allowed=!chosenOlt||!assigned||assigned===chosenOlt;
+     option.hidden=!allowed;option.disabled=!allowed;
+   });
+   const selected=odpSelect.options[odpSelect.selectedIndex];
+   if(selected&&selected.value&&(selected.disabled||selected.hidden))odpSelect.value='';
+   refreshOdpDistance();
+ }
+ function setBindingStep(step){
+   const hasCustomer=Boolean(customerSelect.value);
+   currentBindingStep=(!hasCustomer?1:Math.max(1,Math.min(3,Number(step)||1)));
+   stage1.hidden=currentBindingStep!==1;
+   setup.hidden=currentBindingStep!==2||!hasCustomer;
+   stage3.hidden=currentBindingStep!==3||!hasCustomer;
+   stageNav.forEach((nav,index)=>{
+     const n=index+1;
+     nav.classList.toggle('is-active',n===currentBindingStep);
+     nav.classList.toggle('is-done',n<currentBindingStep);
+   });
+   const selectedOption=customerSelect.options[customerSelect.selectedIndex];
+   editButton.hidden=!(currentBindingStep===3&&selectedOption&&selectedOption.value&&selectedOption.dataset.complete==='1');
+ }
+ function applyLayout(){
+   const option=customerSelect.options[customerSelect.selectedIndex];
+   const hasCustomer=Boolean(option&&option.value);
+   const complete=hasCustomer&&option.dataset.complete==='1';
+   bindButton.hidden=!complete;
+   readSnButton.disabled=!hasCustomer;
+   if(!hasCustomer)setBindingStep(1); else setBindingStep(currentBindingStep);
+ }
+ function loadCustomer(useDraft){
+   const option=customerSelect.options[customerSelect.selectedIndex];
+   if(!option||!option.value){
+     oltSelect.value='';odpSelect.value='';portInput.value='';latInput.value='';lngInput.value='';
+     snInput.value='';vendorSelect.value='FIBERHOME';forceEdit=false;resetDetectedSn();
+     filterOdps();applyLayout();refreshPortAvailability();refreshOdpDistance();return;
+   }
+   if(!useDraft){
+     oltSelect.value=String(option.dataset.oltId||'');
+     filterOdps();
+     odpSelect.value=String(option.dataset.odpId||'');
+     filterOdps();
+     portInput.value=String(option.dataset.ponPort||'');
+     latInput.value=String(option.dataset.lat||'');
+     lngInput.value=String(option.dataset.lng||'');
+     snInput.value='';vendorSelect.value='FIBERHOME';
+     forceEdit=false;
+   } else {
+     filterOdps();
+   }
+   applyLayout();
+   refreshPortAvailability();
+   refreshOdpDistance();
+ }
+ function resetDetectedSn(){
+   detectedSnItems=[];
+   detectedSnSelect.replaceChildren();
+   const placeholder=document.createElement('option');placeholder.value='';placeholder.textContent='Pilih SN yang terdeteksi…';
+   detectedSnSelect.appendChild(placeholder);detectedSnSelect.hidden=true;snReadStatus.textContent='';
+ }
+ function customerDisplay(option){
+   const username=String(option.dataset.pppoe||option.textContent||'').trim();
+   const name=String(option.dataset.customerName||'').trim();
+   if(name && username && name.toLowerCase()!==username.toLowerCase())return username+' — '+name;
+   return name||username||('Pelanggan #'+option.value);
+ }
+ function hideCustomerResults(){
+   customerResults.hidden=true;
+   customerSearch.setAttribute('aria-expanded','false');
+ }
+ function showCustomerResults(){
+   const query=String(customerSearch.value||'').trim().toLowerCase();
+   customerResults.replaceChildren();
+   if(!query){hideCustomerResults();return;}
+   const matches=allCustomerOptions.filter(option=>{
+     const searchText=(String(option.dataset.search||'')+' '+String(option.dataset.customerName||'')+' '+String(option.dataset.pppoe||'')).toLowerCase();
+     return searchText.includes(query);
+   });
+   if(!matches.length){
+     const empty=document.createElement('div');empty.className='list-group-item text-muted small';empty.textContent='Pelanggan tidak ditemukan. Periksa kata pencarian atau pilih pelanggan dari daftar.';customerResults.appendChild(empty);
+   }else{
+     matches.slice(0,40).forEach(option=>{
+       const button=document.createElement('button');button.type='button';button.className='list-group-item list-group-item-action text-start';button.setAttribute('role','option');
+       const title=document.createElement('div');title.className='fw-semibold';title.textContent=String(option.dataset.customerName||option.textContent||'Pelanggan');
+       const meta=document.createElement('div');meta.className='small text-muted';meta.textContent=(option.dataset.pppoe?'PPPoE: '+option.dataset.pppoe+' · ':'')+'ID '+option.value;
+       button.append(title,meta);
+       button.addEventListener('click',()=>{
+         customerSelect.value=String(option.value);
+         customerSearch.value=customerDisplay(option);
+         hideCustomerResults();
+         preserveDraft=false;resetDetectedSn();loadCustomer(false);setBindingStep(option.dataset.complete==='1'?3:2);
+       });
+       customerResults.appendChild(button);
+     });
+     if(matches.length>40){
+       const more=document.createElement('div');more.className='list-group-item small text-muted';more.textContent='Ada '+matches.length+' hasil. Tambahkan beberapa huruf agar pencarian lebih spesifik.';customerResults.appendChild(more);
+     }
+   }
+   customerResults.hidden=false;
+   customerSearch.setAttribute('aria-expanded','true');
+ }
+ function usedPortsForOdp(odpId){
+   const used=new Set();
+   allCustomerOptions.forEach(option=>{
+     if(String(option.value)===String(customerSelect.value||''))return;
+     if(String(option.dataset.odpId||'')!==String(odpId||''))return;
+     const raw=String(option.dataset.ponPort||'').trim();
+     if(!/^[0-9]+$/.test(raw))return;
+     const port=Number(raw);if(Number.isInteger(port)&&port>=1&&port<=8)used.add(port);
+   });
+   return used;
+ }
+ function refreshPortAvailability(){
+   const odpId=String(odpSelect.value||'');
+   if(!odpId){portStatus.textContent='Pilih ODP terlebih dahulu untuk memeriksa port yang tersedia.';portStatus.className='form-text';return;}
+   const used=usedPortsForOdp(odpId);
+   const raw=String(portInput.value||'').trim();
+   const requested=Number(raw);
+   if(raw!=='' && /^[0-9]+$/.test(raw) && Number.isInteger(requested) && requested>=1 && requested<=8 && !used.has(requested)){
+     portStatus.textContent='Port '+requested+' masih tersedia pada ODP ini.';
+     portStatus.className='form-text binding-port-ok';return;
+   }
+   let chosen=null;
+   const start=(raw!=='' && Number.isInteger(requested) && requested>=1 && requested<=8)?requested:0;
+   for(let step=1;step<=8;step++){
+     const candidate=((start+step-1)%8)+1;
+     if(!used.has(candidate)){chosen=candidate;break;}
+   }
+   if(chosen===null){
+     portInput.value='';
+     portStatus.textContent='Semua port 1–8 pada ODP ini sudah terpakai. Pilih ODP lain.';
+     portStatus.className='form-text binding-port-error';return;
+   }
+   portInput.value=String(chosen);
+   if(raw!=='' && Number.isInteger(requested) && requested>=1 && requested<=8 && used.has(requested)){
+     portStatus.textContent='Port '+requested+' sudah digunakan pelanggan lain. Sistem memilih port kosong '+chosen+'.';
+     portStatus.className='form-text binding-port-warn';
+   }else if(raw!=='' && (!Number.isInteger(requested)||requested<1||requested>8)){
+     portStatus.textContent='Port harus bernomor 1–8. Sistem memilih port kosong '+chosen+'.';
+     portStatus.className='form-text binding-port-warn';
+   }else{
+     portStatus.textContent='Port kosong yang dipilih: '+chosen+'.';
+     portStatus.className='form-text binding-port-ok';
+   }
+ }
+ customerSearch.addEventListener('input',()=>{
+   const selected=customerSelect.options[customerSelect.selectedIndex];
+   if(selected && selected.value && customerSearch.value.trim()!==customerDisplay(selected)){
+     customerSelect.value='';preserveDraft=false;resetDetectedSn();loadCustomer(false);
+   }
+   showCustomerResults();
+ });
+ customerSearch.addEventListener('keydown',e=>{
+   if(e.key==='Escape'){hideCustomerResults();return;}
+   if(e.key==='Enter'&&!customerResults.hidden){
+     const first=customerResults.querySelector('button[role="option"]');
+     if(first){e.preventDefault();first.click();}
+   }
+ });
+ document.addEventListener('click',e=>{
+   const picker=document.getElementById('bindingCustomerPicker');
+   if(picker && !picker.contains(e.target))hideCustomerResults();
+ });
+ portInput.addEventListener('change',refreshPortAvailability);
+ portInput.addEventListener('blur',refreshPortAvailability);
+ readSnButton.addEventListener('click',async()=>{
+   const customerId=String(customerSelect.value||'');
+   if(!customerId){snReadStatus.textContent='Pilih pelanggan terlebih dahulu.';return;}
+   resetDetectedSn();
+   readSnButton.disabled=true;
+   readSnButton.innerHTML='<span class="spinner-border spinner-border-sm me-2"></span>Membaca SN dari OLT…';
+   snReadStatus.textContent='Memindai daftar ONU yang belum terdaftar. Pemindaian ini tidak mengubah konfigurasi OLT.';
+   try{
+     const customerOption=customerSelect.options[customerSelect.selectedIndex];
+     const scanOltId=String(oltSelect.value||(customerOption&&customerOption.dataset.oltId)||'');
+     const scanQuery='customer_id='+encodeURIComponent(customerId)+(scanOltId?'&olt_id='+encodeURIComponent(scanOltId):'');
+     const response=await fetch('/tech/binding-only/autofind?'+scanQuery,{headers:{Accept:'application/json'}});
+     const data=await response.json().catch(()=>({success:false,message:'Respons server tidak dapat dibaca.'}));
+     if(!response.ok||!data.success)throw new Error(data.message||'SN gagal dibaca dari OLT.');
+     detectedSnItems=Array.isArray(data.items)?data.items:[];
+     detectedSnItems.forEach((item,index)=>{
+       const option=document.createElement('option');option.value=String(index);
+       option.textContent=String(item.sn||'SN tidak diketahui')+' · PON '+String(item.pon);
+       detectedSnSelect.appendChild(option);
+     });
+     detectedSnSelect.hidden=detectedSnItems.length===0;
+     const warning=String(data.warning||'');
+     snReadStatus.textContent=String(data.message||'Pemindaian selesai.')+(warning?' '+warning:'');
+   }catch(error){snReadStatus.textContent=String(error.message||'SN gagal dibaca dari OLT.');}
+   finally{
+     const option=customerSelect.options[customerSelect.selectedIndex];
+     readSnButton.disabled=!option||!option.value;
+     readSnButton.innerHTML='<i class="bi bi-search me-1"></i>Baca SN dari OLT';
+   }
+ });
+ detectedSnSelect.addEventListener('change',()=>{
+   const item=detectedSnItems[Number(detectedSnSelect.value)];
+   if(!item)return;
+   snInput.value=String(item.sn||'');
+   if(Array.from(vendorSelect.options).some(option=>option.value===item.vendor))vendorSelect.value=item.vendor;
+   snReadStatus.textContent='SN '+item.sn+' dari PON '+item.pon+' dipilih untuk proses pendaftaran ONT.';
+ });
+ customerSelect.addEventListener('change',()=>{preserveDraft=false;resetDetectedSn();loadCustomer(false);const option=customerSelect.options[customerSelect.selectedIndex];setBindingStep(option&&option.value&&option.dataset.complete==='1'?3:(customerSelect.value?2:1));});
+ document.getElementById('bindingBackToCustomer').addEventListener('click',()=>setBindingStep(1));
+ document.getElementById('bindingBackToNetwork').addEventListener('click',()=>setBindingStep(2));
+ oltSelect.addEventListener('change',()=>{filterOdps();refreshPortAvailability();refreshOdpDistance();});
+ odpSelect.addEventListener('change',()=>{refreshPortAvailability();refreshOdpDistance();});
+ latInput.addEventListener('input',refreshOdpDistance);
+ lngInput.addEventListener('input',refreshOdpDistance);
+ editButton.addEventListener('click',()=>{forceEdit=true;setBindingStep(2);});
+ document.getElementById('bindingUseGps').addEventListener('click',()=>{
+   if(!window.isSecureContext){
+     gpsStatus.textContent='Browser menolak GPS karena halaman tidak dibuka melalui koneksi aman HTTPS. Buka portal menggunakan alamat https://portal.intercirtynetwrok.web.id lalu coba lagi.';
+     return;
+   }
+   if(!navigator.geolocation){gpsStatus.textContent='Fitur lokasi tidak tersedia di browser ini. Buka halaman lewat Chrome dan izinkan akses Lokasi untuk aplikasi browser.';return;}
+   gpsStatus.textContent='Mencari koordinat GPS… pastikan Lokasi HP aktif.';
+   const applyPosition=pos=>{
+     const latitude=Number(pos.coords.latitude),longitude=Number(pos.coords.longitude);
+     if(!Number.isFinite(latitude)||!Number.isFinite(longitude)||Math.abs(latitude)>90||Math.abs(longitude)>180){
+       gpsStatus.textContent='Koordinat dari perangkat tidak valid. Coba lagi atau isi koordinat secara manual.';
+       return;
+     }
+     latInput.value=latitude.toFixed(6);
+     lngInput.value=longitude.toFixed(6);
+     gpsStatus.textContent='Lokasi berhasil dibaca. Pastikan titiknya sesuai lokasi pelanggan sebelum disimpan.';
+   };
+   const explainGpsError=err=>{
+     if(!window.isSecureContext){
+       gpsStatus.textContent='GPS diblokir karena koneksi halaman tidak aman. Buka portal memakai HTTPS.';
+     }else if(err&&err.code===1){
+       gpsStatus.textContent='Akses lokasi ditolak oleh browser atau sistem HP. Cek izin Lokasi untuk Chrome/aplikasi browser di Setelan HP, pilih Izinkan saat menggunakan aplikasi, aktifkan Lokasi presisi, lalu muat ulang halaman.';
+     }else if(err&&err.code===2){
+       gpsStatus.textContent='Posisi belum tersedia. Aktifkan GPS HP, coba dekat jendela/area terbuka, lalu tekan Ambil GPS lagi.';
+     }else if(err&&err.code===3){
+       gpsStatus.textContent='GPS terlalu lama merespons. Mencoba lokasi berbasis jaringan…';
+     }else{
+       gpsStatus.textContent='GPS gagal dibaca. Aktifkan Lokasi HP, pastikan izin browser aktif, lalu coba lagi.';
+     }
+   };
+   navigator.geolocation.getCurrentPosition(applyPosition,err=>{
+     if(err&&err.code===2||err&&err.code===3){
+       explainGpsError(err);
+       navigator.geolocation.getCurrentPosition(applyPosition,explainGpsError,{enableHighAccuracy:false,timeout:25000,maximumAge:60000});
+     }else{
+       explainGpsError(err);
+     }
+   },{enableHighAccuracy:true,timeout:12000,maximumAge:0});
+ });
+ form.addEventListener('submit',e=>{
+   const option=customerSelect.options[customerSelect.selectedIndex];
+   if(!option||!option.value){e.preventDefault();return;}
+   const action=(e.submitter && e.submitter.value) ? e.submitter.value : lastSubmitAction;
+   // Always submit the selected action via a hidden field, because the clicked button
+   // is disabled in this handler and older WebViews can omit the disabled submitter.
+   actionInput.value=action;
+   if(action==='save_network'){
+     const port=Number(portInput.value),lat=Number(latInput.value),lng=Number(lngInput.value);
+     const latText=latInput.value.trim(),lngText=lngInput.value.trim();
+     const gpsValid=latText!==''&&lngText!==''&&Number.isFinite(lat)&&Number.isFinite(lng)&&lat>=-90&&lat<=90&&lng>=-180&&lng<=180;
+     const odpDistance=getSelectedOdpDistance();
+     if(!oltSelect.value||!odpSelect.value||!Number.isInteger(port)||port<1||port>8||!gpsValid||!odpDistance.ok){
+       e.preventDefault();refreshOdpDistance();
+       alert(!gpsValid?'GPS pelanggan wajib diambil di lokasi pelanggan.':(!odpDistance.ok?odpDistance.message:'Lengkapi OLT HSGQ, ODP, dan port 1–8.'));
+       return;
+     }
+     saveButton.disabled=true;saveButton.innerHTML='<span class="spinner-border spinner-border-sm me-2"></span>Menyimpan data jaringan…';
+     return;
+   }
+   if(option.dataset.complete!=='1'||forceEdit){e.preventDefault();setup.hidden=false;return;}
+   if(!snInput.value.trim()){e.preventDefault();alert('Masukkan SN modem terlebih dahulu.');return;}
+   if(!confirm('Daftarkan ONT ke OLT untuk pelanggan ini? Sistem akan melanjutkan pemeriksaan PPPoE dan internet. Jika ONT sudah terdaftar tetapi internet belum aktif, jangan ulangi binding.')){e.preventDefault();return;}
+   bindButton.disabled=true;bindButton.innerHTML='<span class="spinner-border spinner-border-sm me-2"></span>Memproses binding…';
+   showBindingProgress('Mengirim perintah binding ke OLT…','Binding OLT');
+ });
+ resetDetectedSn();
+ loadCustomer(preserveDraft);
+ const initialCustomer=customerSelect.options[customerSelect.selectedIndex];
+ if(initialCustomer&&initialCustomer.value){
+   customerSearch.value=customerDisplay(initialCustomer);
+   setBindingStep((watchBindingStatus||startBindingStep||initialCustomer.dataset.complete==='1')?3:2);
+ }else{
+   setBindingStep(1);
+ }
+
+ let watchStopped=false;
+ if(doneOk){
+   doneOk.addEventListener('click',()=>{ window.location.href='/tech/binding-only'; });
+ }
+ function simpleBindingStatus(job,postcheck){
+   const status=String(job&&job.status||'').toLowerCase();
+   const stage=String(postcheck&&postcheck.status||'');
+   const raw=String((postcheck&&postcheck.last_message)||(job&&job.last_message)||'');
+   if(status==='done')return 'Binding berhasil. PPPoE aktif dan koneksi internet terverifikasi.';
+   if(/pemeriksaan firmware otomatis belum berhasil|firmware.*upgrade berjalan|upgrade gagal|upgrade dibatalkan|upgrade melebihi .*menit|firmware.*dijadwalkan ulang|menunggu upgrade firmware|hasil perintah upgrade belum dapat dipastikan|WAN ditahan karena proses firmware gagal/i.test(raw))return 'ONT sudah terdaftar, tetapi pemeriksaan atau pembaruan firmware belum selesai. Jangan ulangi binding; hubungi admin jaringan.';
+   if(status==='bound_manual')return 'ONT sudah terdaftar, tetapi internet belum aktif. Jangan ulangi binding. Periksa akun PPPoE dan konfigurasi WAN pada ONT/OLT.';
+   if(status==='failed')return 'Pendaftaran ONT belum berhasil. Periksa SN, daya ONT, konektor fiber, dan koneksi OLT sebelum mencoba lagi.';
+   if(stage==='waiting_session')return 'Menunggu sesi PPPoE aktif di MikroTik.';
+   if(stage==='waiting_reboot_down')return 'PPPoE aktif. ONT direstart melalui OLT; menunggu sesi terputus.';
+   if(stage==='waiting_reboot_up')return 'ONT sudah direstart. Menunggu PPPoE tersambung kembali.';
+   if(stage==='waiting_ping')return 'PPPoE tersambung kembali. Menguji koneksi internet.';
+   if(/SN tidak ditemukan|GAGAL BINDING|autofind OLT/i.test(raw))return 'ONT belum terdeteksi di OLT. Pastikan SN sesuai label, ONT menyala, dan kabel fiber terpasang.';
+
+   if(/TAHAP 1\/2|PROSES BINDING/i.test(raw))return 'Sedang mendaftarkan ONT ke OLT. Pastikan ONT menyala dan kabel fiber terpasang.';
+   if(/TAHAP 2\/2|WAN_PENDING|WAN\/PPPoE|PPPoE belum|ACS/i.test(raw))return 'ONT sudah terdaftar. Sistem sedang menyiapkan PPPoE dan memeriksa koneksi internet.';
+   return 'Memeriksa status pendaftaran ONT dan koneksi internet.';
+ }
+ async function pollBindingStatus(){
+   if(watchStopped||!watchBindingStatus||!watchCustomerId||!asyncStatusPanel)return;
+   try{
+     const response=await fetch('/tech/binding-only/status?customer_id='+encodeURIComponent(watchCustomerId),{
+       headers:{Accept:'application/json'},cache:'no-store'
+     });
+     const data=await response.json().catch(()=>({success:false,message:'Respons status tidak bisa dibaca.'}));
+     if(!response.ok||!data.success)throw new Error(data.message||'Status binding belum tersedia.');
+     const job=data.job||{};
+     const postcheck=data.postcheck||null;
+     const status=String(job.status||'').toLowerCase();
+     const message=simpleBindingStatus(job,postcheck);
+     asyncStatusPanel.hidden=false;
+     asyncStatusPanel.className='alert rounded-4 binding-live-status '+(
+       status==='failed'||status==='bound_manual'?'alert-warning':
+       status==='done'?'alert-success':'alert-info'
+     );
+     asyncStatusPanel.textContent=message;
+     if(status!=='done'&&status!=='failed'&&status!=='bound_manual'){
+       const postStage=String(postcheck&&postcheck.status||'');
+       const stageLabel=postStage==='waiting_session'?'Menunggu sesi PPPoE aktif':
+         postStage==='waiting_reboot_down'?'Menunggu ONT restart dan sesi PPPoE terputus':
+         postStage==='waiting_reboot_up'?'Menunggu PPPoE tersambung kembali':
+         postStage==='waiting_ping'?'Menguji koneksi internet':
+         status==='pending'?'Menunggu konfigurasi PPPoE dan koneksi internet':'Memeriksa pendaftaran ONT';
+       showBindingProgress(message,stageLabel);
+     }
+     if(status==='done'){
+       watchStopped=true;
+       hideBindingProgress();
+       if(doneText)doneText.textContent=message;
+       if(doneOverlay)doneOverlay.classList.add('show');
+       return;
+     }
+     if(status==='failed'||status==='bound_manual'){
+       watchStopped=true;
+       hideBindingProgress();
+       asyncStatusPanel.className='alert alert-warning rounded-4 binding-live-status';
+       asyncStatusPanel.textContent=message+(status==='bound_manual'
+         ? '\nBinding tidak perlu diulang. Periksa akun PPPoE dan konfigurasi WAN, lalu gunakan menu Perbaiki Layanan atau hubungi admin jaringan.'
+         : '\nPeriksa SN, daya ONT, konektor fiber, dan koneksi OLT sebelum mencoba binding kembali.');
+       return;
+     }
+   }catch(error){
+     asyncStatusPanel.hidden=false;
+     asyncStatusPanel.className='alert alert-info rounded-4 binding-live-status';
+     const pollingMessage='Belum berhasil membaca status terbaru. Sistem akan mencoba lagi sambil memeriksa ACS, PPPoE, dan internet.';
+     asyncStatusPanel.textContent=pollingMessage;
+     showBindingProgress(pollingMessage,'Memeriksa status jaringan');
+   }
+   // Keep the overlay alive while the server reports a pending job. Stop only on
+   // terminal success (Internet UP) or terminal failed/manual status.
+   window.setTimeout(pollBindingStatus,5000);
+ }
+ if(watchBindingStatus&&watchCustomerId){
+   if(asyncStatusPanel){
+     asyncStatusPanel.hidden=false;
+     asyncStatusPanel.textContent='ONT sudah terdaftar. Menunggu koneksi PPPoE aktif, restart ONT bila diperlukan, lalu menguji internet…';
+   }
+   showBindingProgress('ONT sudah terdaftar. Menunggu PPPoE aktif, restart ONT bila diperlukan, lalu tes internet…','Memeriksa koneksi internet');
+   pollBindingStatus();
+ }
+})();
+</script>
+<%- include('partials/bottom_nav') %>

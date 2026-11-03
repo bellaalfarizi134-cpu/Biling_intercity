@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Intercity Speedtest</title>
+<style>
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#07111f;color:#fff;min-height:100vh;display:grid;place-items:center}
+.card{width:min(92vw,520px);background:#0d1b2d;border:1px solid #1d3550;border-radius:24px;padding:28px;box-shadow:0 20px 60px #0008;text-align:center}
+h1{margin:0 0 6px;font-size:28px}.sub{color:#91a4ba;margin-bottom:24px}.g{font-size:64px;font-weight:800;line-height:1}.unit{font-size:18px;color:#8fa4ba}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:24px 0}.box{background:#091525;border-radius:16px;padding:16px}.v{font-size:25px;font-weight:700}.l{color:#91a4ba;font-size:13px;margin-top:4px}
+button{width:100%;border:0;border-radius:14px;padding:15px;font-size:17px;font-weight:700;background:#1683ff;color:#fff}button:disabled{opacity:.5}.status{margin-top:15px;color:#9db0c4;font-size:13px}.ip{margin-top:10px;color:#6f849b;font-size:12px}
+</style></head><body><main class="card"><h1>Intercity Speedtest</h1><div class="sub">Tes koneksi dari pelanggan ke server Intercity</div>
+<div class="g" id="speed">0</div><div class="unit">Mbps</div>
+<div class="row"><div class="box"><div class="v" id="down">0 Mbps</div><div class="l">Download</div></div><div class="box"><div class="v" id="up">0 Mbps</div><div class="l">Upload</div></div></div>
+<button id="go" onclick="run()">Mulai Speedtest</button><div class="status" id="st">Siap menguji koneksi</div><div class="ip">Server: Intercity • Jalur ISP → MikroTik → Server</div></main>
+<script>
+const $=id=>document.getElementById(id);
+async function ping(){let a=performance.now();await fetch('/speedtest/ping?t='+Date.now(),{cache:'no-store'});return performance.now()-a}
+async function downloadTest(sec=6){let total=0,stop=Date.now()+sec*1000;async function w(){while(Date.now()<stop){let r=await fetch('/speedtest/download?size=2097152&t='+Date.now(),{cache:'no-store'});let b=await r.arrayBuffer();total+=b.byteLength}}await Promise.all([w(),w(),w()]);return total*8/1e6/sec}
+async function uploadTest(sec=6){let total=0,stop=Date.now()+sec*1000,data=new Uint8Array(1024*1024);data.fill(65);async function w(){while(Date.now()<stop){let r=await fetch('/speedtest/upload?t='+Date.now(),{method:'POST',body:data,cache:'no-store'});let j=await r.json();total+=j.bytes}}await Promise.all([w(),w()]);return total*8/1e6/sec}
+async function run(){let b=$('go');b.disabled=true;$('st').textContent='Mengukur ping...';let p=await ping();$('st').textContent='Mengukur download...';let d=await downloadTest();$('down').textContent=d.toFixed(1)+' Mbps';$('speed').textContent=d.toFixed(1);$('st').textContent='Mengukur upload...';let u=await uploadTest();$('up').textContent=u.toFixed(1)+' Mbps';$('speed').textContent=((d+u)/2).toFixed(1);$('st').textContent='Selesai • Ping '+Math.round(p)+' ms';b.disabled=false}
+</script></body></html>

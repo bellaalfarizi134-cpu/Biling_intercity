@@ -1,0 +1,47 @@
+<%- include('partials/header') %>
+
+<% if (msg) { %><div class="alert alert-<%= msg.type === 'error' ? 'danger' : 'success' %> rounded-4"><%= msg.text %></div><% } %>
+<div class="t-card mb-3">
+  <input id="legacySearch" type="search" class="form-control rounded-3" placeholder="Cari nama pelanggan atau username PPPoE…" autocomplete="off">
+  <div class="small text-secondary mt-2">Hasil terlihat: <strong id="visibleCount"><%= (candidates || []).length %></strong> dari <%= (candidates || []).length %> calon pelanggan.</div>
+</div>
+<form id="legacyImportForm" method="POST" action="/tech/provisioning/import" onsubmit="return document.querySelectorAll('.legacy-check:checked').length > 0 && confirm('Tambahkan pelanggan terpilih ke antrean? OLT belum akan diubah.');"></form>
+<div class="d-flex justify-content-end mb-3"><button id="chooseSelected" type="submit" form="legacyImportForm" class="btn btn-primary rounded-3" hidden disabled><i class="bi bi-check2-circle me-2"></i>Pilih</button></div>
+
+<% if (!candidates || candidates.length === 0) { %><div class="t-card text-center py-4"><div class="fw-bold">Tidak ada pelanggan lama yang cocok</div></div><% } %>
+<% (candidates || []).forEach(c => { %>
+  <div class="t-card mb-2 legacy-row" data-search="<%= [c.name,c.pppoe_username].filter(Boolean).join(' ').toLowerCase() %>">
+    <label for="legacy-check-<%= c.id %>" class="d-flex align-items-center gap-3 mb-0" style="cursor:pointer">
+      <input id="legacy-check-<%= c.id %>" class="form-check-input legacy-check mt-0" type="checkbox" name="customer_ids" value="<%= c.id %>" form="legacyImportForm" aria-label="Pilih <%= c.name %>">
+      <span class="flex-grow-1">
+        <span class="d-block fw-bold"><%= c.name || '-' %></span>
+        <span class="d-block small text-secondary">Username PPPoE: <strong><%= c.pppoe_username || 'Belum ada username' %></strong></span>
+      </span>
+    </label>
+  </div>
+<% }) %>
+<script>
+(function () {
+  const search = document.getElementById('legacySearch');
+  const rows = Array.from(document.querySelectorAll('.legacy-row'));
+  const count = document.getElementById('visibleCount');
+  function filterRows() {
+    const q = (search.value || '').trim().toLocaleLowerCase(); let n = 0;
+    rows.forEach(row => { const haystack = (row.dataset.search || row.textContent || '').toLocaleLowerCase(); const visible = !q || haystack.includes(q); row.hidden = !visible; if (visible) n++; });
+    count.textContent = n;
+  }
+  const chooseButton = document.getElementById('chooseSelected');
+  function updateChooseButton() {
+    const selected = document.querySelectorAll('.legacy-check:checked').length;
+    chooseButton.hidden = selected === 0;
+    chooseButton.disabled = selected === 0;
+    chooseButton.classList.toggle('btn-primary', selected > 0);
+    chooseButton.classList.toggle('btn-secondary', selected === 0);
+  }
+  search.addEventListener('input', filterRows);
+  document.querySelectorAll('.legacy-check').forEach(box => box.addEventListener('change', () => { box.closest('.legacy-row').classList.toggle('border-primary', box.checked); updateChooseButton(); }));
+  updateChooseButton();
+  document.getElementById('legacyImportForm').addEventListener('submit', event => { if (!document.querySelector('.legacy-check:checked')) { event.preventDefault(); alert('Pilih minimal satu pelanggan.'); } });
+})();
+</script>
+<%- include('partials/bottom_nav') %>

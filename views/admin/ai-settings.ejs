@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="<%= lang || 'id' %>"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pengaturan AI | <%= company %></title><meta name="theme-color" content="#0f172a">
+<link rel="manifest" href="/admin/manifest.webmanifest"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"><link rel="stylesheet" href="/css/admin.css">
+</head><body>
+<%- include('partials/sidebar', { activePage: 'ai-settings', company }) %>
+<div class="mw"><div class="topbar"><div class="tb-title"><button class="hb-menu" onclick="toggleSidebar()"><i class="bi bi-list"></i></button><i class="bi bi-robot"></i> Pengaturan AI Otomatis</div><div class="tb-right"><span class="adm-badge"><i class="bi bi-person-fill"></i> Admin</span><a href="/admin/logout" class="btn btn-g btn-sm"><i class="bi bi-box-arrow-left"></i> Logout</a></div></div>
+<div class="page">
+<% if (msg) { %><div class="alert alert-<%= msg.type==='success'?'s':'d' %>"><i class="bi bi-info-circle"></i> <%= msg.text || msg %></div><% } %>
+<div class="card mb16"><div class="card-hd"><h6><i class="bi bi-shield-lock"></i> Atur API AI</h6></div><div class="card-bd">
+<p>Isi API key di sini. Kunci disimpan di server dan tidak ditampilkan kembali. Kolom kosong mempertahankan kunci yang sudah tersimpan.</p>
+<div class="hint" style="margin-bottom:14px">Jangan kirim API key melalui WhatsApp atau chat. Gunakan halaman ini saat login sebagai Admin.</div>
+<form method="post" action="/admin/ai-settings" autocomplete="off">
+<div class="card mb16"><div class="card-hd"><strong>1. Gemini (utama)</strong> <span class="badge <%= configured.gemini ? 'bg-success' : 'bg-secondary' %>"><%= configured.gemini ? 'Sudah diisi' : 'Belum diisi' %></span></div><div class="card-bd">
+<label class="fl" for="geminiApiKey">Gemini API key</label><input class="fc" id="geminiApiKey" name="geminiApiKey" type="password" maxlength="500" autocomplete="new-password" placeholder="<%= configured.gemini ? 'Kunci tersimpan — kosongkan untuk mempertahankan' : 'Tempel API key Gemini di sini' %>">
+<label class="fl" for="geminiModel" style="margin-top:10px">Model Gemini</label><input class="fc" id="geminiModel" name="geminiModel" value="<%= models.gemini %>" maxlength="240" required>
+</div></div>
+<div class="card mb16"><div class="card-hd"><strong>2. Groq (cadangan 1)</strong> <span class="badge <%= configured.groq ? 'bg-success' : 'bg-secondary' %>"><%= configured.groq ? 'Sudah diisi' : 'Belum diisi' %></span></div><div class="card-bd">
+<label class="fl" for="groqApiKey">Groq API key</label><input class="fc" id="groqApiKey" name="groqApiKey" type="password" maxlength="500" autocomplete="new-password" placeholder="<%= configured.groq ? 'Kunci tersimpan — kosongkan untuk mempertahankan' : 'Tempel API key Groq di sini' %>">
+<label class="fl" for="groqModel" style="margin-top:10px">Model Groq</label><input class="fc" id="groqModel" name="groqModel" value="<%= models.groq %>" maxlength="240" required>
+</div></div>
+<div class="card mb16"><div class="card-hd"><strong>3. OpenRouter (cadangan 2)</strong> <span class="badge <%= configured.openrouter ? 'bg-success' : 'bg-secondary' %>"><%= configured.openrouter ? 'Sudah diisi' : 'Belum diisi' %></span></div><div class="card-bd">
+<label class="fl" for="openrouterApiKey">OpenRouter API key</label><input class="fc" id="openrouterApiKey" name="openrouterApiKey" type="password" maxlength="500" autocomplete="new-password" placeholder="<%= configured.openrouter ? 'Kunci tersimpan — kosongkan untuk mempertahankan' : 'Tempel API key OpenRouter di sini' %>">
+<label class="fl" for="openrouterModel" style="margin-top:10px">Model OpenRouter</label><input class="fc" id="openrouterModel" name="openrouterModel" value="<%= models.openrouter %>" maxlength="240" required>
+</div></div>
+<button class="btn btn-p" type="submit"><i class="bi bi-save"></i> Simpan Pengaturan AI</button> <a class="btn btn-g" href="/admin/settings">Kembali</a>
+</form></div></div>
+<div class="card"><div class="card-bd"><strong>Catatan:</strong> penyedia dicoba sesuai urutan Gemini → Groq → OpenRouter. Kuota gratis mengikuti batas masing-masing akun. Pengaturan ini mengaktifkan cadangan untuk AI Teknisi; AI Manajer dan AI Pelanggan/WhatsApp masih perlu dibuat serta diuji terpisah.</div></div>
+</div></div><script src="/js/admin.js"></script></body></html>

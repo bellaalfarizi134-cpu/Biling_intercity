@@ -1,0 +1,2143 @@
+<!DOCTYPE html>
+<html lang="<%= lang || 'id' %>">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= t('customer.dashboard_title', 'Dashboard Pelanggan') %> | Portal ISP</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="/img/logo.png">
+  <link rel="icon" href="/img/logo.png">
+
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --card-bg: rgba(17, 24, 39, 0.85);
+      --card-border: rgba(99, 102, 241, 0.25);
+      --accent-primary: #6366f1;
+      --accent-secondary: #06b6d4;
+      --accent-success: #10b981;
+      --accent-warning: #f59e0b;
+      --accent-danger: #ef4444;
+      --text-main: #f8fafc;
+      --text-muted: #cbd5e1;
+    }
+
+    .text-muted {
+      color: #cbd5e1 !important;
+    }
+
+    /* ── HIGH CONTRAST FORM & PLACEHOLDER STYLING ── */
+    .form-control, .form-select {
+      color: #ffffff !important;
+      background: rgba(30, 41, 59, 0.95) !important;
+    }
+
+    .form-control::placeholder,
+    textarea::placeholder,
+    input::placeholder {
+      color: #cbd5e1 !important; /* Ultra-clear bright slate placeholder */
+      opacity: 1 !important;
+      font-weight: 500 !important;
+    }
+
+    .form-label {
+      color: #f8fafc !important;
+      font-weight: 700 !important;
+      font-size: 13px !important;
+      margin-bottom: 6px !important;
+    }
+
+    .form-text {
+      color: #e2e8f0 !important;
+      font-weight: 600 !important;
+      font-size: 12px !important;
+      margin-top: 6px !important;
+    }
+
+    body {
+      background:
+        radial-gradient(circle at 15% 15%, rgba(99, 102, 241, 0.18) 0%, transparent 45%),
+        radial-gradient(circle at 85% 20%, rgba(6, 182, 212, 0.15) 0%, transparent 45%),
+        radial-gradient(circle at 50% 85%, rgba(16, 185, 129, 0.12) 0%, transparent 50%),
+        linear-gradient(180deg, #090d16 0%, #0f172a 100%);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+      padding-bottom: 90px;
+      -webkit-tap-highlight-color: transparent;
+      position: relative;
+    }
+
+    /* ── GLASS NAVBAR ── */
+    .navbar {
+      background: rgba(15, 23, 42, 0.90) !important;
+      backdrop-filter: blur(20px) saturate(180%);
+      border-bottom: 1px solid var(--card-border);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+      position: sticky;
+      top: 0;
+      z-index: 1020;
+    }
+
+    .navbar-brand {
+      font-weight: 800;
+      color: #f8fafc !important;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 17px;
+    }
+
+    .navbar-brand img {
+      height: 38px;
+      width: auto;
+      border-radius: 10px;
+      box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3);
+    }
+
+    /* ── NOTIFICATION BELL BADGE ── */
+    .notif-bell-btn {
+      position: relative;
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid var(--card-border);
+      color: #cbd5e1;
+      border-radius: 12px;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.25s ease;
+      cursor: pointer;
+    }
+
+    .notif-bell-btn:hover {
+      background: rgba(99, 102, 241, 0.2);
+      border-color: rgba(99, 102, 241, 0.4);
+      color: #fff;
+      transform: translateY(-1px);
+    }
+
+    .notif-badge-count {
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      background: #ef4444;
+      color: #fff;
+      font-size: 10px;
+      font-weight: 800;
+      border-radius: 10px;
+      padding: 2px 6px;
+      border: 2px solid #0f172a;
+    }
+
+    .status-pill {
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .status-pill.online {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.35);
+    }
+
+    .status-pill.offline {
+      background: rgba(148, 163, 184, 0.15);
+      color: #cbd5e1;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+    }
+
+    .status-pill.suspended {
+      background: rgba(239, 68, 68, 0.15);
+      color: #fca5a5;
+      border: 1px solid rgba(239, 68, 68, 0.35);
+    }
+
+    .pulse-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      display: inline-block;
+      animation: pulseAnim 1.8s infinite;
+    }
+
+    .pulse-dot.green { background: #10b981; box-shadow: 0 0 8px #10b981; }
+    .pulse-dot.red { background: #ef4444; box-shadow: 0 0 8px #ef4444; }
+
+    @keyframes pulseAnim {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(1.2); }
+    }
+
+    /* ── GLASS CARD COMPONENT ── */
+    .glass-card {
+      background: rgba(17, 24, 39, 0.85);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--card-border);
+      border-radius: 24px;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.35);
+      overflow: hidden;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+      margin-bottom: 24px;
+    }
+
+    .glass-card:hover {
+      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.45);
+    }
+
+    .glass-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(30, 41, 59, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .glass-header h5 {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 700;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+    }
+
+    /* ── HERO BANNER ── */
+    .hero-banner {
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.95) 100%);
+      border-radius: 20px;
+      padding: 20px 24px;
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.35);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-banner::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -20%;
+      width: 300px;
+      height: 300px;
+      background: radial-gradient(circle, rgba(99, 102, 241, 0.25) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    /* ── QUICK ACTION DOCK ── */
+    .action-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 12px;
+      margin-bottom: 22px;
+    }
+
+    .action-item {
+      background: rgba(30, 41, 59, 0.7);
+      border: 1px solid rgba(99, 102, 241, 0.2);
+      border-radius: 16px;
+      padding: 14px 8px;
+      text-align: center;
+      color: #f8fafc;
+      text-decoration: none;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .action-item:hover {
+      background: rgba(99, 102, 241, 0.2);
+      border-color: rgba(99, 102, 241, 0.5);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(99, 102, 241, 0.25);
+      color: #fff;
+    }
+
+    .action-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .ai-pay { background: linear-gradient(135deg, #6366f1, #4f46e5); }
+    .ai-ssid { background: linear-gradient(135deg, #06b6d4, #0891b2); }
+    .ai-pass { background: linear-gradient(135deg, #10b981, #059669); }
+    .ai-reboot { background: linear-gradient(135deg, #f59e0b, #d97706); }
+    .ai-ppob { background: linear-gradient(135deg, #ec4899, #db2777); }
+    .ai-ticket { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
+    .ai-speedtest { background: linear-gradient(135deg, #0ea5e9, #2563eb); }
+
+    .action-label {
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1.2;
+      color: #f1f5f9;
+    }
+
+    /* ── BILL HERO CARD ── */
+    .bill-hero-card {
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.95) 100%);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      border-radius: 20px;
+      padding: 20px 24px;
+      margin-bottom: 22px;
+      box-shadow: 0 12px 35px rgba(245, 158, 11, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .bill-hero-card.paid {
+      border-color: rgba(16, 185, 129, 0.3);
+      box-shadow: 0 12px 35px rgba(16, 185, 129, 0.1);
+    }
+
+    .btn-pay-hero {
+      background: linear-gradient(135deg, #f59e0b, #ea580c);
+      color: #fff;
+      font-weight: 800;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 14px;
+      box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
+      transition: all 0.25s ease;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-pay-hero:hover {
+      transform: translateY(-2px) scale(1.02);
+      box-shadow: 0 10px 28px rgba(245, 158, 11, 0.5);
+      color: #fff;
+    }
+
+    /* ── STATS GRID & GAUGES ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .stat-card {
+      background: rgba(15, 23, 42, 0.65);
+      border: 1px solid rgba(99, 102, 241, 0.15);
+      border-radius: 14px;
+      padding: 14px 8px;
+      text-align: center;
+      transition: all 0.25s ease;
+    }
+
+    .stat-card:hover {
+      border-color: rgba(99, 102, 241, 0.35);
+      transform: translateY(-2px);
+    }
+
+    .stat-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 8px;
+      font-size: 17px;
+      color: white;
+    }
+
+    .stat-icon.online { background: linear-gradient(135deg, #10b981, #059669); }
+    .stat-icon.offline { background: linear-gradient(135deg, #64748b, #475569); }
+    .stat-icon.person { background: linear-gradient(135deg, #f59e0b, #d97706); }
+    .stat-icon.activity { background: linear-gradient(135deg, #06b6d4, #0891b2); }
+    .stat-icon.people { background: linear-gradient(135deg, #ef4444, #dc2626); }
+
+    .stat-label {
+      font-size: 10px;
+      color: #cbd5e1;
+      margin-bottom: 4px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .stat-value {
+      font-size: 14px;
+      font-weight: 800;
+      color: #ffffff;
+      word-break: break-word;
+    }
+
+    .traffic-gauge {
+      position: relative;
+      width: 100%;
+      max-width: 220px;
+      margin: 0 auto;
+    }
+
+    .traffic-gauge canvas {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .traffic-gauge-center {
+      position: absolute;
+      left: 50%;
+      top: 60%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+    }
+
+    .traffic-gauge-value {
+      font-size: 17px;
+      font-weight: 800;
+      color: #ffffff;
+    }
+
+    .traffic-gauge-unit {
+      font-size: 11px;
+      color: #e2e8f0;
+      font-weight: 700;
+    }
+
+    .traffic-gauge-scale {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: #cbd5e1;
+      font-weight: 700;
+      margin-top: 4px;
+    }
+
+    /* ── NOTIFICATION DRAWER / OFFCANVAS ── */
+    .notif-drawer-content {
+      background: #0f172a;
+      border-left: 1px solid var(--card-border);
+      color: #f8fafc;
+    }
+
+    .notif-item {
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+      border-radius: 12px;
+      margin-bottom: 8px;
+      background: rgba(30, 41, 59, 0.5);
+      transition: all 0.2s ease;
+    }
+
+    .notif-item:hover {
+      background: rgba(99, 102, 241, 0.12);
+    }
+
+    .notif-item.unread {
+      border-left: 3px solid #6366f1;
+    }
+
+    /* ── INVOICE TABLE OVERRIDE ── */
+    .invoice-table {
+      /* Override Bootstrap 5 CSS variables */
+      --bs-table-color: #ffffff;
+      --bs-table-bg: rgba(15, 23, 42, 0.6);
+      --bs-table-border-color: rgba(255,255,255,0.08);
+      --bs-table-hover-color: #ffffff;
+      --bs-table-hover-bg: rgba(99, 102, 241, 0.15);
+      --bs-table-striped-color: #ffffff;
+      --bs-table-active-color: #ffffff;
+      --bs-table-active-bg: rgba(99, 102, 241, 0.2);
+      color: #ffffff !important;
+      margin-bottom: 0 !important;
+    }
+    .invoice-table thead tr {
+      background: rgba(30, 41, 59, 0.95) !important;
+      border-bottom: 2px solid rgba(99,102,241,0.4) !important;
+    }
+    .invoice-table thead th {
+      color: #ffffff !important;
+      font-size: 13px !important;
+      font-weight: 700 !important;
+      padding: 12px 14px !important;
+      border: none !important;
+      white-space: nowrap;
+      background: transparent !important;
+    }
+    .invoice-table tbody tr {
+      background: rgba(15, 23, 42, 0.7) !important;
+      border-bottom: 1px solid rgba(255,255,255,0.08) !important;
+    }
+    .invoice-table tbody tr:hover td {
+      background: rgba(99, 102, 241, 0.15) !important;
+      color: #ffffff !important;
+    }
+    .invoice-table tbody td {
+      color: #ffffff !important;
+      padding: 12px 14px !important;
+      border: none !important;
+      vertical-align: middle !important;
+      background: transparent !important;
+    }
+    .invoice-table .col-periode {
+      color: #ffffff !important;
+      font-weight: 700 !important;
+      font-size: 13px !important;
+    }
+    .invoice-table .col-paket {
+      color: #e2e8f0 !important;
+      font-weight: 600 !important;
+      font-size: 13px !important;
+    }
+    .invoice-table .col-jumlah {
+      color: #7dd3fc !important;
+      font-weight: 800 !important;
+      font-size: 14px !important;
+    }
+
+    /* ── RESPONSIVE MOBILE ── */
+
+    /* Prevent ALL horizontal overflow globally */
+    html, body {
+      overflow-x: hidden;
+      max-width: 100%;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    @media (max-width: 991px) {
+      .action-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+      }
+    }
+
+    @media (max-width: 767px) {
+      body {
+        padding-bottom: 95px;
+      }
+
+      /* Container flush on small screens */
+      .container {
+        padding-left: 12px;
+        padding-right: 12px;
+      }
+
+      /* Glass cards smaller radius, no margin blow-out */
+      .glass-card {
+        border-radius: 16px;
+        margin-bottom: 14px;
+      }
+
+      .glass-header {
+        padding: 12px 14px;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .glass-header h5 {
+        font-size: 13px;
+      }
+
+      /* Hero banner compact */
+      .hero-banner {
+        padding: 16px;
+        border-radius: 16px;
+        margin-bottom: 14px !important;
+      }
+
+      /* Bill hero card stacked */
+      .bill-hero-card {
+        flex-direction: column;
+        align-items: stretch;
+        text-align: center;
+        padding: 14px;
+        gap: 12px;
+        border-radius: 14px;
+        margin-bottom: 14px;
+      }
+
+      .bill-hero-card > div:first-child {
+        justify-content: center;
+      }
+
+      .btn-pay-hero {
+        justify-content: center;
+        width: 100%;
+        padding: 12px 16px;
+        font-size: 14px;
+      }
+
+      /* Action grid */
+      .action-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        margin-bottom: 14px;
+      }
+
+      .action-item {
+        padding: 10px 6px;
+        border-radius: 12px;
+        gap: 6px;
+      }
+
+      .action-icon {
+        width: 38px;
+        height: 38px;
+        font-size: 17px;
+        border-radius: 10px;
+      }
+
+      .action-label {
+        font-size: 10px;
+        line-height: 1.2;
+      }
+
+      /* Stats grid compact */
+      .stats-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+      }
+
+      .stat-card {
+        padding: 10px 4px;
+        border-radius: 10px;
+      }
+
+      .stat-icon {
+        width: 30px;
+        height: 30px;
+        font-size: 13px;
+        margin-bottom: 4px;
+      }
+
+      .stat-label {
+        font-size: 9px;
+        letter-spacing: 0;
+        margin-bottom: 2px;
+      }
+
+      .stat-value {
+        font-size: 11px;
+        font-weight: 800;
+      }
+
+      /* Traffic gauges shrink */
+      .traffic-gauge {
+        max-width: 130px;
+      }
+
+      .traffic-gauge-value {
+        font-size: 13px;
+      }
+
+      .traffic-gauge-unit {
+        font-size: 9px;
+      }
+
+      .traffic-gauge-scale {
+        font-size: 9px;
+      }
+
+      /* WiFi box compact */
+      .wifi-box {
+        padding: 12px;
+      }
+
+      /* Accordion body flush */
+      .accordion-body {
+        padding: 10px 8px !important;
+      }
+
+      /* Mobile invoice card full width */
+      .mobile-invoice-card {
+        border-radius: 12px;
+        padding: 14px;
+      }
+
+      /* Alert compact */
+      .alert.small {
+        padding: 8px 12px;
+        font-size: 11px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .container {
+        padding-left: 8px;
+        padding-right: 8px;
+      }
+
+      .hero-banner {
+        padding: 12px;
+      }
+
+      .bill-hero-card {
+        padding: 12px;
+      }
+
+      .action-grid {
+        gap: 6px;
+      }
+
+      .action-item {
+        padding: 8px 4px;
+        border-radius: 10px;
+      }
+
+      .action-icon {
+        width: 34px;
+        height: 34px;
+        font-size: 15px;
+      }
+
+      .action-label {
+        font-size: 9px;
+      }
+
+      .glass-header {
+        padding: 10px 12px;
+      }
+
+      .glass-header h5 {
+        font-size: 12px;
+      }
+    }
+  /* INTERCITY NETWORK DASHBOARD PREMIUM REFRESH */
+  :root{--dash-bg:#f3f7fc;--dash-card:#fff;--dash-border:#e4ebf4;--dash-text:#13243d;--dash-muted:#718096}
+  body{background:linear-gradient(180deg,#f6f9fd 0%,#eef4fb 100%)!important;color:var(--dash-text)!important}
+  .navbar{background:rgba(255,255,255,.94)!important;border-bottom:1px solid #e2e9f2!important;box-shadow:0 4px 18px rgba(21,55,91,.08)!important}
+  .navbar-brand{color:#13243d!important}.navbar-brand img{box-shadow:none}.navbar-brand span{color:#13243d}
+  .notif-bell-btn{background:#f5f8fc;color:#48627e;border-color:#dce6f1}
+  .status-pill.online{background:#e9fbf4;color:#09845e;border-color:#bcefdc}.status-pill.offline{background:#f1f4f8;color:#65758b;border-color:#dce4ed}
+  .container{max-width:1240px}
+  .glass-card{background:#fff!important;border:1px solid var(--dash-border)!important;border-radius:16px!important;box-shadow:0 8px 28px rgba(31,67,104,.07)!important;color:var(--dash-text)}
+  .glass-card:hover{box-shadow:0 12px 34px rgba(31,67,104,.1)!important}
+  .glass-header{background:#fff!important;border-bottom:1px solid #edf1f6!important}.glass-header h5{color:#18304d!important}
+  .hero-banner{background:linear-gradient(110deg,#073d86,#075dbd)!important;border:0!important;box-shadow:0 12px 28px rgba(7,76,145,.18)!important;border-radius:16px!important}
+  .hero-banner h3{color:#fff!important}.hero-banner .text-muted{color:#dbeaff!important}.hero-banner .badge{background:rgba(255,255,255,.12)!important;color:#fff!important;border-color:rgba(255,255,255,.22)!important}
+  .action-item{background:#fff!important;border:1px solid var(--dash-border)!important;color:#18304d!important;border-radius:14px!important;box-shadow:0 5px 16px rgba(31,67,104,.05)}
+  .action-item:hover{background:#f7fbff!important;border-color:#bcdcff!important;box-shadow:0 9px 22px rgba(7,124,255,.1)!important}.action-label{color:#29425f!important}
+  .stat-card{background:#fff!important;border:1px solid #e6edf5!important;box-shadow:none!important}.stat-label{color:#7a8aa0!important}.stat-value{color:#17304e!important}
+  .traffic-gauge-value{color:#17304e!important}.traffic-gauge-unit,.traffic-gauge-scale{color:#7a8aa0!important}
+  .bill-hero-card{background:#fff!important;border-color:#f2d89b!important;box-shadow:0 8px 25px rgba(245,158,11,.07)!important}.bill-hero-card.paid{border-color:#bce8d4}
+  .bill-hero-card h5{color:#17304e!important}.bill-hero-card .small{color:#718096!important}
+  .form-control,.form-select{background:#fff!important;color:#17304e!important;border-color:#d8e2ee!important}.form-control::placeholder,input::placeholder,textarea::placeholder{color:#8a99ac!important}
+  .table{--bs-table-color:#243b56!important;--bs-table-bg:#fff!important}.invoice-table{--bs-table-color:#243b56!important;--bs-table-bg:#fff!important;--bs-table-hover-color:#17304e!important;--bs-table-hover-bg:#f4f8fd!important;color:#243b56!important}
+  .invoice-table thead tr{background:#f5f8fc!important;border-bottom:1px solid #e3ebf4!important}.invoice-table thead th{color:#52677f!important}.invoice-table tbody tr{background:#fff!important;border-bottom:1px solid #edf1f5!important}.invoice-table tbody td{color:#314862!important}.invoice-table .col-periode,.invoice-table .col-paket{color:#243b56!important}.invoice-table .col-jumlah{color:#087cff!important}
+  .text-white{color:#17304e!important}.text-muted{color:#718096!important}
+  .alert{border:1px solid #dfe8f2!important;box-shadow:0 4px 14px rgba(31,67,104,.05)}
+  @media(max-width:767px){body{padding-bottom:88px!important}.container{padding-left:12px!important;padding-right:12px!important}.navbar-brand span{font-size:14px}.hero-banner{border-radius:14px!important}.action-grid{grid-template-columns:repeat(3,1fr)!important}.action-item{min-height:82px}.glass-card{border-radius:14px!important}}
+  
+  </style>
+  <style>
+    /* READABILITY FIX — light dashboard */
+    .wifi-box,
+    .connected-device-list,
+    .mobile-invoice-card {
+      background: #f7faff !important;
+      border-color: #dfe8f2 !important;
+      color: #243b56 !important;
+    }
+    .wifi-box .text-white,
+    .mobile-invoice-card .text-white,
+    .connected-device-list .text-white,
+    .accordion-button.text-white,
+    .accordion-body .text-white,
+    .customer-accordion .text-white {
+      color: #17304e !important;
+    }
+    .wifi-box [style*="color:#cbd5e1"],
+    .wifi-box [style*="color:#94a3b8"],
+    .mobile-invoice-card [style*="color:#cbd5e1"],
+    .customer-accordion [style*="color:#cbd5e1"],
+    .customer-accordion [style*="color:#94a3b8"] {
+      color: #61748b !important;
+    }
+    .wifi-box [style*="background:rgba(30,41,59"],
+    .mobile-invoice-card [style*="background:rgba(15,23,42"],
+    .customer-accordion tr[style*="background:rgba(30,41,59"] {
+      background: #f7faff !important;
+    }
+    .customer-accordion .accordion-button {
+      color: #17304e !important;
+      background: #fff !important;
+      box-shadow: none !important;
+    }
+    .customer-accordion .accordion-button::after {
+      filter: none !important;
+    }
+    .customer-accordion .table th {
+      color: #52677f !important;
+      background: #f5f8fc !important;
+    }
+    .customer-accordion .table td {
+      color: #314862 !important;
+    }
+    .customer-accordion .table .text-muted {
+      color: #718096 !important;
+    }
+    .payment-method-card,
+    .payment-modal-option {
+      color: #243b56 !important;
+    }
+    .payment-method-card .text-white,
+    .payment-modal-option .text-white {
+      color: #17304e !important;
+    }
+    .modal-content:not([style*="#0f172a"]) {
+      color: #17304e;
+    }
+    @media(max-width:767px){
+      .mobile-invoice-card {
+        box-shadow: 0 5px 18px rgba(31,67,104,.08) !important;
+      }
+      .wifi-box {
+        padding: 14px !important;
+      }
+      .customer-accordion .accordion-button {
+        font-size: 13px !important;
+        padding: 13px 14px !important;
+      }
+    }
+  </style>
+<style id="isp-light-theme-finish">body{background:linear-gradient(180deg,#fff 0%,#f5f7fa 58%,#eef6ff 100%)!important;color:#101827!important}.glass,.card,.stat-card,.dashboard-card,.panel,.content-card{background:#fff!important;color:#101827!important;border-color:#e5e7eb!important;box-shadow:0 12px 32px rgba(16,24,39,.07)!important}.topbar,.navbar,.header{background:#fff!important;color:#101827!important;border-bottom:1px solid #e5e7eb!important}.modal-content{background:#fff!important;color:#101827!important;border-color:#dbe3ee!important}.modal-content .text-white,.modal-content .text-light{color:#101827!important}.form-control,.form-select,textarea,input,select{background:#fff!important;color:#101827!important;border-color:#d9dee8!important}.form-text,.text-muted{color:#6b7280!important}.btn-primary{background:linear-gradient(135deg,#0052cc,#00a3e0)!important;border:0!important}.btn-outline-light,.btn-outline-secondary{background:#fff!important;color:#0052cc!important;border-color:#cbd5e1!important}.table,.table td,.table th{color:#101827!important}.table td,.table th{border-color:#e5e7eb!important}a{color:#0052cc}.badge{border-radius:999px}</style>
+
+<style id="customer-profile-card">
+  .customer-profile-card{
+    position:relative;overflow:hidden;margin-bottom:22px;padding:20px;
+    background:linear-gradient(145deg,#ffffff 0%,#f7fbff 100%);
+    border:1px solid #dbe7f3;border-radius:20px;
+    box-shadow:0 12px 32px rgba(16,24,39,.08);
+  }
+  .customer-profile-head{display:flex;align-items:center;gap:14px;margin-bottom:16px}
+  .customer-profile-avatar{
+    width:54px;height:54px;flex:0 0 54px;border-radius:16px;
+    display:flex;align-items:center;justify-content:center;
+    color:#fff;font-size:25px;
+    background:linear-gradient(135deg,#0052cc,#00a3e0);
+    box-shadow:0 8px 20px rgba(0,82,204,.22);
+  }
+  .customer-profile-eyebrow{
+    color:#0b6ed0;font-size:10px;font-weight:900;
+    letter-spacing:.8px;text-transform:uppercase;margin-bottom:2px;
+  }
+  .customer-profile-name{color:#13243d;font-size:20px;font-weight:900;line-height:1.2}
+  .customer-profile-id{color:#718096;font-size:12px;margin-top:4px}
+  .customer-profile-status{
+    margin-left:auto;display:inline-flex;align-items:center;gap:6px;
+    padding:7px 11px;border-radius:999px;font-size:10px;font-weight:900;
+    white-space:nowrap;
+  }
+  .customer-profile-status.is-active{
+    color:#087f5b;background:#e8f8f1;border:1px solid #b7ead8;
+  }
+  .customer-profile-status.is-suspended{
+    color:#c92a2a;background:#fff0f0;border:1px solid #ffc9c9;
+  }
+  .customer-profile-status .bi-circle-fill{font-size:6px}
+  .customer-profile-grid{
+    display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;
+  }
+  .customer-profile-item{
+    min-width:0;padding:12px 13px;border-radius:13px;
+    background:#fff;border:1px solid #e5edf6;
+  }
+  .customer-profile-wide{grid-column:1/-1}
+  .customer-profile-label{
+    color:#718096;font-size:10px;font-weight:700;
+    margin-bottom:4px;text-transform:uppercase;letter-spacing:.25px;
+  }
+  .customer-profile-label i{color:#0b8fd3}
+  .customer-profile-value{
+    color:#13243d;font-size:13px;font-weight:800;
+    line-height:1.35;overflow-wrap:anywhere;
+  }
+  @media(max-width:575px){
+    .customer-profile-card{padding:16px;border-radius:17px;margin-bottom:16px}
+    .customer-profile-head{align-items:flex-start;gap:11px}
+    .customer-profile-avatar{width:46px;height:46px;flex-basis:46px;border-radius:13px;font-size:21px}
+    .customer-profile-name{font-size:17px}
+    .customer-profile-status{padding:6px 9px;font-size:9px}
+    .customer-profile-grid{grid-template-columns:1fr}
+    .customer-profile-wide{grid-column:auto}
+    .customer-profile-item{padding:11px 12px}
+  }
+</style>
+</head>
+
+<body>
+  <!-- NAVBAR -->
+  <nav class="navbar navbar-dark shadow-sm">
+    <div class="container d-flex justify-content-between align-items-center">
+      <span style="display:none!important" aria-hidden="true"></span>
+
+      <div class="d-flex align-items-center gap-2">
+        <!-- PWA INSTALL -->
+        <button type="button" id="btn-install-pwa-dash" class="btn btn-warning btn-sm fw-bold shadow-sm d-none d-sm-inline-flex align-items-center" onclick="triggerPwaInstall()" style="border-radius:10px; font-size:12px;">
+          <i class="bi bi-download me-1"></i> App
+        </button>
+
+          <!-- WEB NOTIFICATION BELL -->
+        <div class="notif-bell-btn" onclick="openNotifDrawer()" title="Notifikasi Pelanggan">
+          <i class="bi bi-bell-fill"></i>
+          <span class="notif-badge-count" id="notifCountBadge" style="display:none">0</span>
+        </div>
+
+        <!-- STATUS BADGE -->
+        <% if (customer.status === 'Online') { %>
+          <span class="status-pill online d-none d-md-inline-flex"><span class="pulse-dot green"></span> <%= t('customer.devices.online', 'Online') %></span>
+        <% } else { %>
+          <span class="status-pill offline d-none d-md-inline-flex"><%= customer.status %></span>
+        <% } %>
+
+        <!-- RECONNECT INTERNET INSTAN -->
+        <form method="POST" action="/customer/reconnect" class="d-inline" title="Refresh & Re-connect Internet Instan">
+          <button type="submit" class="btn btn-success btn-sm fw-bold d-inline-flex align-items-center gap-1 shadow-sm" style="border-radius:10px; padding: 6px 12px; font-size:12px;">
+            <i class="bi bi-arrow-repeat"></i> Re-Connect
+          </button>
+        </form>
+
+        <!-- LOGOUT -->
+        <form method="POST" action="/customer/logout" class="d-inline">
+          <button type="submit" class="btn btn-outline-danger btn-sm" style="border-radius:10px; padding: 7px 11px;">
+            <i class="bi bi-box-arrow-right"></i>
+          </button>
+        </form>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container mt-4">
+    <!-- ALERT NOTIFICATION -->
+    <% if (typeof notif !== 'undefined' && notif && notif.text) { %>
+      <% var nClass = 'alert-' + (notif.type === 'danger' ? 'danger' : notif.type === 'warning' ? 'warning' : notif.type === 'info' ? 'info' : 'success'); %>
+      <div class="alert <%= nClass %> alert-dismissible fade show" role="alert" id="notif-alert">
+        <i class="bi bi-info-circle me-2"></i> <%= notif.text %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+      <script>setTimeout(() => { var a = document.getElementById('notif-alert'); if (a) a.classList.remove('show'); }, 4000);</script>
+    <% } %>
+
+    <!-- PROMO SLIDES CAROUSEL: server-rendered so images do not depend on browser fetch -->
+    <div id="promoCarousel" class="carousel slide carousel-fade mb-4 dashboard-promo" data-bs-ride="carousel" data-bs-interval="5000">
+      <div class="carousel-inner">
+        <% if (typeof promoSlides !== 'undefined' && Array.isArray(promoSlides) && promoSlides.length) { %>
+          <% promoSlides.forEach(function(s, i) { %>
+            <% var promoHref = String(s.url || '').trim(); %>
+            <% if (!( /^https?:\/\//i.test(promoHref) || (promoHref.startsWith('/') && !promoHref.startsWith('//')) )) promoHref = ''; %>
+            <% var promoTarget = s.open_in_new_tab ? ' target="_blank" rel="noopener noreferrer"' : ''; %>
+            <div class="carousel-item <%= i === 0 ? 'active' : '' %>">
+              <div class="promo-slide-card">
+                <% if (promoHref) { %><a href="<%= promoHref %>"<%- promoTarget %> style="text-decoration:none;display:block;"><% } %>
+                  <div class="promo-image-wrap">
+                    <img src="<%= s.image_path %>" alt="<%= s.title || 'Promo Intercity Network' %>" loading="<%= i === 0 ? 'eager' : 'lazy' %>">
+                  </div>
+                <% if (promoHref) { %></a><% } %>
+                <div class="promo-caption">
+                  <div class="promo-title"><i class="bi bi-megaphone-fill me-1" style="color:#f59e0b;"></i><%= s.title || 'Promo Terbaru' %></div>
+                  <div class="promo-desc"><%= s.description || 'Informasi promo terbaru dari Intercity Network.' %></div>
+                  <% if (promoHref) { %>
+                    <a class="promo-link" href="<%= promoHref %>"<%- promoTarget %>>Lihat Detail Promo <i class="bi bi-arrow-right"></i></a>
+                  <% } else { %>
+                    <div class="promo-link" style="color:#94a3b8;cursor:default;"><i class="bi bi-info-circle"></i> Informasi promo terbaru</div>
+                  <% } %>
+                </div>
+              </div>
+            </div>
+          <% }); %>
+        <% } else { %>
+          <div class="carousel-item active"><div class="dashboard-promo-empty"><i class="bi bi-megaphone-fill me-2"></i><span>Promo & informasi terbaru</span></div></div>
+        <% } %>
+      </div>
+    </div>
+    <style>
+      .dashboard-promo { border-radius:20px; overflow:hidden; box-shadow:0 12px 34px rgba(15,23,42,.12); border:1px solid #dbe7f3; background:#fff; }
+      .dashboard-promo .promo-slide-card { background:#fff; }
+      .dashboard-promo .promo-image-wrap { position:relative; overflow:hidden; background:#eef5ff; }
+      .dashboard-promo .promo-image-wrap img { width:100%; height:auto; max-height:420px; object-fit:contain; display:block; margin:0 auto; background:#f7faff; }
+      .dashboard-promo .promo-caption { padding:14px 16px 16px; background:#fff; }
+      .dashboard-promo .promo-title { color:#17304e; font-size:17px; font-weight:900; line-height:1.25; margin-bottom:4px; }
+      .dashboard-promo .promo-desc { color:#61748b; font-size:13px; line-height:1.5; }
+      .dashboard-promo .promo-link { display:inline-flex; align-items:center; gap:6px; margin-top:10px; font-size:12px; font-weight:800; color:#0d6efd; text-decoration:none; }
+      .dashboard-promo .promo-link:hover { text-decoration:underline; }
+      .dashboard-promo-empty { min-height:110px; display:flex; align-items:center; justify-content:center; color:#52677f; font-weight:800; background:#f7faff; }
+      @media(max-width:575px){ .dashboard-promo .promo-image-wrap img{max-height:300px;} .dashboard-promo .promo-title{font-size:15px;} .dashboard-promo .promo-desc{font-size:12px;} }
+    </style>
+
+    <!-- CUSTOMER PROFILE CARD -->
+    <% if (profile) { %>
+      <div class="customer-profile-card" id="profile-section">
+        <div class="customer-profile-head">
+          <div class="customer-profile-avatar">
+            <i class="bi bi-person-fill"></i>
+          </div>
+          <div class="flex-grow-1">
+            <div class="customer-profile-eyebrow">
+              <i class="bi bi-person-vcard me-1"></i> Profil Pelanggan
+            </div>
+            <div class="customer-profile-name"><%= profile.name || customer.phone || 'Pelanggan' %></div>
+            <div class="customer-profile-id">
+              ID Pelanggan: <strong><%= profile.genieacs_tag || profile.pppoe_username || profile.id || '-' %></strong>
+            </div>
+          </div>
+          <span class="customer-profile-status <%= profile.status === 'active' ? 'is-active' : 'is-suspended' %>">
+            <i class="bi bi-circle-fill"></i>
+            <%= profile.status === 'active' ? 'AKTIF' : 'ISOLIR' %>
+          </span>
+        </div>
+
+        <div class="customer-profile-grid">
+          <div class="customer-profile-item">
+            <div class="customer-profile-label"><i class="bi bi-phone me-1"></i> Nomor HP</div>
+            <div class="customer-profile-value"><%= profile.phone || '-' %></div>
+          </div>
+          <div class="customer-profile-item">
+            <div class="customer-profile-label"><i class="bi bi-wifi me-1"></i> Paket Internet</div>
+            <div class="customer-profile-value"><%= profile.package_name || 'Layanan Internet' %></div>
+          </div>
+          <div class="customer-profile-item">
+            <div class="customer-profile-label"><i class="bi bi-speedometer2 me-1"></i> Kecepatan</div>
+            <div class="customer-profile-value">
+              <%= profile.speed_down ? Math.round(Number(profile.speed_down) / 1000) : '-' %> Mbps
+            </div>
+          </div>
+          <div class="customer-profile-item">
+            <div class="customer-profile-label"><i class="bi bi-person-badge me-1"></i> PPPoE</div>
+            <div class="customer-profile-value"><%= profile.pppoe_username || customer.pppoeUsername || '-' %></div>
+          </div>
+          <div class="customer-profile-item customer-profile-wide">
+            <div class="customer-profile-label"><i class="bi bi-geo-alt me-1"></i> Alamat Pemasangan</div>
+            <div class="customer-profile-value"><%= profile.address || '-' %></div>
+          </div>
+          <div class="customer-profile-item">
+            <div class="customer-profile-label"><i class="bi bi-activity me-1"></i> Redaman / RX Optical</div>
+            <div class="customer-profile-value"><%= customer.rxPower || '-' %></div>
+          </div>
+          <div class="customer-profile-item">
+            <div class="customer-profile-label"><i class="bi bi-clock-history me-1"></i> Update ONU</div>
+            <div class="customer-profile-value" id="customerLastInform" data-last-inform="<%= customer.lastInform || '' %>"><%= customer.lastInformAgo || customer.lastInform || '-' %></div>
+          </div>
+        </div>
+
+        <div class="d-flex align-items-center justify-content-between gap-2 mt-3 pt-3" style="border-top:1px solid #e5edf6;">
+          <span class="small text-muted" id="deviceSyncNotice" style="font-size:11px;">
+            <i class="bi bi-broadcast-pin me-1"></i> Data ONU dapat diperbarui secara langsung
+          </span>
+          <button type="button" id="btnDeviceRefresh" class="btn btn-primary btn-sm fw-bold px-3 py-2" style="border-radius:11px;">
+            <i class="bi bi-arrow-repeat me-1"></i> Poll ONU Sekarang
+          </button>
+        </div>
+      </div>
+    <% } %>
+
+    <!-- INVOICE STATUS HERO CARD -->
+    <% 
+      const paidInvoices = (invoices || []).filter(i => i.status === 'paid');
+      const unpaidInvoices = (invoices || []).filter(i => i.status !== 'paid');
+      const hasUnpaid = unpaidInvoices.length > 0;
+      const latestUnpaid = hasUnpaid ? unpaidInvoices[0] : null;
+
+      const totalUnpaidAmount = unpaidInvoices.reduce((sum, i) => sum + (Number(i.amount != null ? i.amount : (i.package_price != null ? i.package_price : 0)) || 0), 0);
+      const unpaidPeriods = unpaidInvoices.map(i => `${i.period_month}/${i.period_year}`).join(', ');
+      const unpaidCount = unpaidInvoices.length;
+    %>
+    <div class="bill-hero-card <%= !hasUnpaid ? 'paid' : '' %>">
+      <div class="d-flex align-items-center gap-3">
+        <div style="width:52px; height:52px; border-radius:16px; display:flex; align-items:center; justify-content:center; font-size:24px; background:<%= hasUnpaid ? 'rgba(245,158,11,0.15)' : 'rgba(16,185,129,0.15)' %>; color:<%= hasUnpaid ? '#f59e0b' : '#10b981' %>; border:1px solid <%= hasUnpaid ? 'rgba(245,158,11,0.3)' : 'rgba(16,185,129,0.3)' %>;">
+          <i class="bi bi-<%= hasUnpaid ? 'exclamation-triangle-fill' : 'shield-check' %>"></i>
+        </div>
+        <div>
+          <% if (hasUnpaid) { %>
+            <div class="badge bg-warning text-dark fw-bold mb-1" style="font-size:10px; letter-spacing:0.5px;">
+              TAGIHAN BELUM DIBAYAR <%= unpaidCount > 1 ? `(${unpaidCount} BULAN)` : '' %>
+            </div>
+            <h5 class="fw-bold mb-0 text-white">Rp <%= parseInt(totalUnpaidAmount || 0).toLocaleString('id-ID') %></h5>
+            <div class="small" style="color:#cbd5e1; font-weight:500; margin-top:2px;">
+              Periode <%= unpaidPeriods %> <%= unpaidCount > 1 ? '• Total Akumulasi' : '• Jatuh tempo tgl 20' %>
+            </div>
+          <% } else { %>
+            <div class="badge bg-success fw-bold mb-1" style="font-size:10px; letter-spacing:0.5px;">SEMUA TAGIHAN LUNAS</div>
+            <h5 class="fw-bold mb-0 text-white">Layanan Internet Aktif</h5>
+            <div class="small" style="color:#cbd5e1; font-weight:500; margin-top:2px;">Terima kasih telah membayar tepat waktu!</div>
+          <% } %>
+        </div>
+      </div>
+
+      <% if (hasUnpaid) { %>
+        <button type="button" class="btn-pay-hero" onclick="openPaymentModal('<%= latestUnpaid.id %>', '<%= totalUnpaidAmount %>')">
+          <i class="bi bi-qr-code-scan"></i> BAYAR SEKARANG (QRIS)
+        </button>
+      <% } %>
+    </div>
+
+    <!-- QUICK ACTION DOCK (6 ICONS) -->
+    <div class="action-grid">
+      <% const navPayAmt = hasUnpaid ? totalUnpaidAmount : 0; %>
+      <div class="action-item" onclick="<%= hasUnpaid ? `openPaymentModal('${latestUnpaid.id}', '${navPayAmt}')` : `location.href='#billing-section'` %>">
+        <div class="action-icon ai-pay"><i class="bi bi-credit-card-2-front-fill"></i></div>
+        <div class="action-label">Bayar Tagihan</div>
+      </div>
+      <div class="action-item" onclick="editSsid('<%= (customer.tags && customer.tags[0]) || customer.id %>', '<%= customer.ssid %>')">
+        <div class="action-icon ai-ssid"><i class="bi bi-wifi"></i></div>
+        <div class="action-label">Nama WiFi</div>
+      </div>
+      <div class="action-item" onclick="editPassword('<%= (customer.tags && customer.tags[0]) || customer.id %>')">
+        <div class="action-icon ai-pass"><i class="bi bi-key-fill"></i></div>
+        <div class="action-label">Sandi WiFi</div>
+      </div>
+      <div class="action-item" onclick="rebootDevice('<%= (customer.tags && customer.tags[0]) || customer.id %>')">
+        <div class="action-icon ai-reboot"><i class="bi bi-arrow-clockwise"></i></div>
+        <div class="action-label">Restart Modem</div>
+      </div>
+      <div class="action-item" onclick="openNotifDrawer()">
+        <div class="action-icon ai-ppob"><i class="bi bi-bell-fill"></i></div>
+        <div class="action-label">Notifikasi</div>
+      </div>
+      <div class="action-item" onclick="openSpeedtest()">
+        <div class="action-icon ai-speedtest"><i class="bi bi-speedometer2"></i></div>
+        <div class="action-label">Speedtest</div>
+      </div>
+      <div class="action-item" onclick="upgradeSpeed()">
+        <div class="action-icon" style="background:#fff7ed;color:#ea580c;"><i class="bi bi-graph-up-arrow"></i></div>
+        <div class="action-label">Upgrade Kecepatan</div>
+      </div>
+      <div class="action-item" onclick="const m = new bootstrap.Modal(document.getElementById('ticketModal')); m.show();">
+        <div class="action-icon ai-ticket"><i class="bi bi-headset"></i></div>
+        <div class="action-label">Bantuan / Tiket</div>
+      </div>
+    </div>
+
+    <!-- MAIN DEVICE & TRAFFIC MONITORING GRID -->
+    <div class="row g-3 g-lg-4 mb-4">
+      <!-- SMART HOME ROUTER CARD -->
+      <div class="col-lg-6">
+        <div class="glass-card h-100 mb-0">
+          <div class="glass-header">
+            <h5><i class="bi bi-router me-2 text-primary"></i> Kontrol Perangkat Router</h5>
+            <span class="badge bg-primary" style="border-radius:8px;"><%= customer.model !== '-' ? customer.model : 'ONT / ONU' %></span>
+          </div>
+          <div class="p-3 p-md-4">
+            <div class="stats-grid mb-3">
+              <div class="stat-card">
+                <div class="stat-icon <%= customer.status === 'Online' ? 'online' : 'offline' %>">
+                  <i class="bi bi-power"></i>
+                </div>
+                <div class="stat-label">Status Router</div>
+                <div class="stat-value"><%= customer.status %></div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-icon activity">
+                  <i class="bi bi-reception-4"></i>
+                </div>
+                <div class="stat-label">Rx Optical</div>
+                <div class="stat-value"><%= customer.rxPower %></div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-icon people">
+                  <i class="bi bi-laptop"></i>
+                </div>
+                <div class="stat-label">User Terhubung</div>
+                <div class="stat-value"><%= customer.totalAssociations || 0 %> User</div>
+              </div>
+            </div>
+
+            <!-- WIFI & PASSWORD BOX -->
+            <div class="wifi-box mb-3" style="background:rgba(15,23,42,0.7); border:1px solid var(--card-border); border-radius:16px; padding:16px;">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="small fw-bold" style="color:#93c5fd;"><i class="bi bi-wifi text-info me-1"></i> Nama SSID WiFi</span>
+                <button class="btn btn-link btn-sm text-info p-0 text-decoration-none fw-bold" onclick="editSsid('<%= (customer.tags && customer.tags[0]) || customer.id %>', '<%= customer.ssid %>')">Ubah <i class="bi bi-pencil"></i></button>
+              </div>
+              <div class="fw-bold text-white mb-3" style="font-size:16px;"><%= customer.ssid || '-' %></div>
+
+              <div class="d-flex align-items-center justify-content-between mb-1">
+                <span class="small fw-bold" style="color:#86efac;"><i class="bi bi-shield-lock text-success me-1"></i> Password WiFi</span>
+                <button class="btn btn-link btn-sm text-success p-0 text-decoration-none fw-bold" onclick="editPassword('<%= (customer.tags && customer.tags[0]) || customer.id %>')">Ubah <i class="bi bi-pencil"></i></button>
+              </div>
+              <div class="d-flex align-items-center gap-2">
+                <input type="password" id="wifiPassInput" class="form-control form-control-sm text-white" value="••••••••" readonly style="background:rgba(30,41,59,0.8); border:none;">
+                <button class="btn btn-outline-secondary btn-sm" type="button" onclick="togglePassVisibility()" style="border-radius:10px;"><i class="bi bi-eye" id="eyeIcon"></i></button>
+              </div>
+            </div>
+
+            <!-- CONNECTED USERS LIST -->
+            <div class="small mb-2 fw-bold" style="color:#52677f;"><i class="bi bi-people me-1"></i> Perangkat Terhubung</div>
+            <% if (connectedUsers && connectedUsers.length > 0) { %>
+              <div class="d-flex flex-column gap-2" style="max-height:180px; overflow-y:auto;">
+                <% connectedUsers.forEach(u => { %>
+                  <div class="d-flex align-items-center justify-content-between p-2 rounded" style="background:rgba(30,41,59,0.6); border:1px solid rgba(255,255,255,0.05); font-size:12px;">
+                    <div class="d-flex align-items-center gap-2">
+                      <i class="bi bi-laptop text-primary"></i>
+                      <div>
+                        <div class="fw-bold text-white"><%= u.hostname || 'Device' %></div>
+                        <div style="font-size:11px; color:#64748b;"><%= u.ip || '-' %> | <%= u.mac || '-' %></div>
+                      </div>
+                    </div>
+                    <span class="badge bg-success" style="font-size:9px;">Active</span>
+                  </div>
+                <% }) %>
+              </div>
+            <% } else { %>
+              <div class="text-center small py-2" style="background:rgba(30,41,59,0.4); border-radius:10px; color:#94a3b8;">Data daftar perangkat tersambung durung kasedhiya saka ONU. Coba delok maneh sawisé ACS nampa data anyar.</div>
+            <% } %>
+          </div>
+        </div>
+      </div>
+
+      <!-- TRAFFIC GAUGES -->
+      <div class="col-lg-6">
+        <div class="glass-card h-100 mb-0">
+          <div class="glass-header">
+            <h5><i class="bi bi-speedometer2 me-2 text-info"></i> Pemantauan Trafik Real-Time</h5>
+            <span class="badge bg-info text-dark" style="border-radius:8px;">Live Mbps</span>
+          </div>
+          <div class="p-3 p-md-4 d-flex flex-column justify-content-center">
+            <div class="row g-3 text-center">
+              <div class="col-6">
+                <div class="stat-label" style="color:#52677f; font-weight:800;">Kecepatan Download</div>
+                <div class="traffic-gauge">
+                  <canvas id="pppoe_rx_gauge" width="220" height="140" data-max="<%= typeof trafficMaxDownMbps !== 'undefined' ? trafficMaxDownMbps : 10 %>"></canvas>
+                  <div class="traffic-gauge-center">
+                    <div class="traffic-gauge-value" id="pppoe_rx_value">-</div>
+                    <div class="traffic-gauge-unit" id="pppoe_rx_unit">&nbsp;</div>
+                  </div>
+                  <div class="traffic-gauge-scale" style="color:#52677f;">
+                    <span>0</span>
+                    <span id="pppoe_rx_max"><%= typeof trafficMaxDownMbps !== 'undefined' ? trafficMaxDownMbps : 10 %> Mbps</span>
+                  </div>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="stat-label" style="color:#52677f; font-weight:800;">Kecepatan Upload</div>
+                <div class="traffic-gauge">
+                  <canvas id="pppoe_tx_gauge" width="220" height="140" data-max="<%= typeof trafficMaxUpMbps !== 'undefined' ? trafficMaxUpMbps : 10 %>"></canvas>
+                  <div class="traffic-gauge-center">
+                    <div class="traffic-gauge-value" id="pppoe_tx_value">-</div>
+                    <div class="traffic-gauge-unit" id="pppoe_tx_unit">&nbsp;</div>
+                  </div>
+                  <div class="traffic-gauge-scale" style="color:#52677f;">
+                    <span>0</span>
+                    <span id="pppoe_tx_max"><%= typeof trafficMaxUpMbps !== 'undefined' ? trafficMaxUpMbps : 10 %> Mbps</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="alert alert-info border-0 mt-4 mb-0 py-2 small text-center" style="background:rgba(6,182,212,0.15); color:#a5f3fc; font-weight:500;">
+              <i class="bi bi-info-circle me-1"></i> Kecepatan disesuaikan dengan paket berlangganan Anda.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PEMAKAIAN DATA BULANAN -->
+    <div class="glass-card mb-4" id="dataUsageCard">
+      <div class="glass-header">
+        <h5><i class="bi bi-database-fill me-2" style="color:#0b6ed0;"></i> Pemakaian Data Bulan Ini</h5>
+        <span class="badge" style="background:#e8f3ff;color:#0868bd;border-radius:8px;">REALTIME</span>
+      </div>
+      <div class="p-3 p-md-4">
+        <div class="row g-3">
+          <div class="col-4">
+            <div class="stat-card h-100">
+              <div class="stat-icon activity"><i class="bi bi-download"></i></div>
+              <div class="stat-label">Download</div>
+              <div class="stat-value" id="usageDownload">-</div>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="stat-card h-100">
+              <div class="stat-icon online"><i class="bi bi-upload"></i></div>
+              <div class="stat-label">Upload</div>
+              <div class="stat-value" id="usageUpload">-</div>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="stat-card h-100">
+              <div class="stat-icon person"><i class="bi bi-pie-chart-fill"></i></div>
+              <div class="stat-label">Total</div>
+              <div class="stat-value" id="usageTotal">-</div>
+            </div>
+          </div>
+        </div>
+        <div class="text-center small mt-3" id="usageUpdated" style="color:#718096;">Memuat pemakaian data...</div>
+      </div>
+    </div>
+
+    <!-- INVOICE & COMPLAINT TIKET SECTIONS -->
+    <div class="accordion customer-accordion mb-4" id="customerAccordion">
+      <!-- TAGIHAN ACCORDION -->
+      <div class="accordion-item glass-card mb-3" id="billing-section">
+        <h2 class="accordion-header">
+          <button class="accordion-button bg-transparent text-white fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#collapseBilling">
+            <i class="bi bi-receipt me-2 text-warning"></i> Status Tagihan & Riwayat Pembayaran
+          </button>
+        </h2>
+        <div id="collapseBilling" class="accordion-collapse collapse show" data-bs-parent="#customerAccordion">
+          <div class="accordion-body p-2 p-md-4">
+            <!-- DESKTOP TABLE VIEW (md ke atas) -->
+            <div class="table-responsive d-none d-md-block">
+              <table class="table table-hover align-middle invoice-table" style="margin-bottom:0;">
+                <thead>
+                  <tr style="border-bottom: 2px solid rgba(99,102,241,0.4); background:rgba(30,41,59,0.8);">
+                    <th class="text-white text-start fw-bold" style="padding:12px 14px; font-size:13px;">Aksi</th>
+                    <th class="text-white fw-bold" style="padding:12px 14px; font-size:13px;">Periode</th>
+                    <th class="text-white fw-bold" style="padding:12px 14px; font-size:13px;">Layanan / Paket</th>
+                    <th class="text-white fw-bold" style="padding:12px 14px; font-size:13px;">Jumlah</th>
+                    <th class="text-white fw-bold" style="padding:12px 14px; font-size:13px;">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% if (invoices && invoices.length > 0) { %>
+                    <% invoices.forEach(inv => { %>
+                      <% const itemAmt = inv.amount != null ? inv.amount : (inv.package_price != null ? inv.package_price : 0); %>
+                            <td class="text-start" style="white-space:nowrap; padding:12px 14px;">
+                          <% if (inv.status !== 'paid') { %>
+                            <button class="btn btn-sm text-dark fw-bold shadow-sm" onclick="openPaymentModal('<%= inv.id %>', '<%= itemAmt %>')" style="background: linear-gradient(135deg, #f59e0b, #fbbf24); border:none; border-radius:8px; padding: 7px 14px; font-size:12px; display:inline-flex; align-items:center; gap:6px;">
+                              <i class="bi bi-qr-code-scan" style="font-size:15px; color:#0f172a;"></i> <span>Bayar</span>
+                            </button>
+                            <a href="/customer/invoice/<%= inv.id %>/pdf" class="btn btn-sm text-white fw-bold shadow-sm ms-1" style="background: rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.3); border-radius:8px; padding: 7px 12px; font-size:12px; display:inline-flex; align-items:center; gap:6px; text-decoration:none;" target="_blank" title="Unduh Tagihan PDF">
+                              <i class="bi bi-file-earmark-pdf-fill" style="font-size:15px; color:#38bdf8;"></i> <span style="color:#ffffff;">PDF</span>
+                            </a>
+                          <% } else { %>
+                            <a href="/customer/invoice/<%= inv.id %>/print-thermal" class="btn btn-sm text-white fw-bold shadow-sm" style="background: linear-gradient(135deg, #059669, #10b981); border:none; border-radius:8px; padding: 7px 12px; font-size:12px; display:inline-flex; align-items:center; gap:6px; text-decoration:none;" target="_blank" title="Cetak Struk Bluetooth Thermal 58mm">
+                              <i class="bi bi-receipt" style="font-size:15px; color:#ffffff;"></i> <span>Struk Thermal</span>
+                            </a>
+                            <a href="/customer/invoice/<%= inv.id %>/print" class="btn btn-sm text-white fw-bold shadow-sm ms-1" style="background: linear-gradient(135deg, #4f46e5, #6366f1); border:none; border-radius:8px; padding: 7px 12px; font-size:12px; display:inline-flex; align-items:center; gap:6px; text-decoration:none;" target="_blank" title="Cetak Faktur A4 Standar">
+                              <i class="bi bi-printer-fill" style="font-size:15px; color:#ffffff;"></i> <span>Faktur A4</span>
+                            </a>
+                            <a href="/customer/invoice/<%= inv.id %>/pdf" class="btn btn-sm text-white fw-bold shadow-sm ms-1" style="background: linear-gradient(135deg, #0284c7, #06b6d4); border:none; border-radius:8px; padding: 7px 12px; font-size:12px; display:inline-flex; align-items:center; gap:6px; text-decoration:none;" target="_blank" title="Unduh PDF">
+                              <i class="bi bi-file-earmark-pdf-fill" style="font-size:15px; color:#ffffff;"></i> <span>PDF</span>
+                            </a>
+                          <% } %>
+                        </td>
+                        <td class="col-periode fw-bold" style="white-space:nowrap;"><%= inv.period_month %>/<%= inv.period_year %></td>
+                        <td class="col-paket"><%= inv.package_name || 'Paket Internet' %></td>
+                        <td class="col-jumlah">Rp <%= parseInt(itemAmt || 0).toLocaleString('id-ID') %></td>
+                        <td style="padding:12px 14px;">
+                          <% if (inv.status === 'paid') { %>
+                            <span class="badge bg-success text-white" style="border-radius:8px; padding:6px 12px; font-size:11px; font-weight:700;">LUNAS</span>
+                          <% } else { %>
+                            <span class="badge text-white" style="background:#dc2626; border-radius:8px; padding:6px 12px; font-size:11px; font-weight:700;">BELUM BAYAR</span>
+                          <% } %>
+                        </td>
+                      </tr>
+                    <% }) %>
+                  <% } else { %>
+                    <tr><td colspan="5" class="text-center text-white py-4" style="font-size:13px;">Belum ada riwayat tagihan</td></tr>
+                  <% } %>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- MOBILE CARD LIST VIEW (di bawah md / HP) -->
+            <div class="d-block d-md-none">
+              <% if (invoices && invoices.length > 0) { %>
+                <div class="d-flex flex-column gap-3">
+                  <% invoices.forEach(inv => { %>
+                    <% const itemAmt = inv.amount != null ? inv.amount : (inv.package_price != null ? inv.package_price : 0); %>
+                    <div class="mobile-invoice-card" style="background:rgba(15,23,42,0.85); border:1px solid rgba(255,255,255,0.12); box-shadow:0 4px 16px rgba(0,0,0,0.25);">
+                      <!-- Top Info Bar -->
+                      <div class="d-flex align-items-center justify-content-between mb-2">
+                        <% if (inv.status === 'paid') { %>
+                          <span class="badge bg-success text-white" style="border-radius:6px; padding:5px 10px; font-size:10px; font-weight:700;">LUNAS</span>
+                        <% } else { %>
+                          <span class="badge text-white" style="background:#dc2626; border-radius:6px; padding:5px 10px; font-size:10px; font-weight:700;">BELUM BAYAR</span>
+                        <% } %>
+                        <span class="fw-bold" style="color:#cbd5e1; font-size:12px;"><i class="bi bi-calendar-event me-1"></i> Periode <%= inv.period_month %>/<%= inv.period_year %></span>
+                      </div>
+
+                      <!-- Service & Amount -->
+                      <div class="mb-3">
+                        <div class="fw-bold text-white" style="font-size:15px; margin-bottom:2px;"><%= inv.package_name || 'Paket Internet' %></div>
+                        <div class="fw-extrabold" style="color:#38bdf8; font-size:18px; font-weight:800;">Rp <%= parseInt(itemAmt || 0).toLocaleString('id-ID') %></div>
+                      </div>
+
+                      <!-- Mobile Action Buttons -->
+                      <div>
+                        <% if (inv.status !== 'paid') { %>
+                          <div class="d-flex flex-column gap-2">
+                            <button class="btn text-dark fw-bold w-100 shadow" onclick="openPaymentModal('<%= inv.id %>', '<%= itemAmt %>')" style="background: linear-gradient(135deg, #f59e0b, #fbbf24); border:none; border-radius:10px; padding:10px; font-size:13px; display:flex; align-items:center; justify-content:center; gap:8px;">
+                              <i class="bi bi-qr-code-scan" style="font-size:17px; color:#0f172a;"></i> <span>BAYAR SEKARANG (QRIS)</span>
+                            </button>
+                            <a href="/customer/invoice/<%= inv.id %>/pdf" class="btn text-white fw-bold w-100 shadow" style="background: rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.25); border-radius:10px; padding:8px; font-size:12px; display:flex; align-items:center; justify-content:center; gap:6px; text-decoration:none;" target="_blank">
+                              <i class="bi bi-file-earmark-pdf-fill" style="font-size:16px; color:#38bdf8;"></i> <span style="color:#ffffff;">Unduh Tagihan PDF</span>
+                            </a>
+                          </div>
+                        <% } else { %>
+                          <div class="d-flex gap-2 flex-wrap">
+                            <a href="/customer/invoice/<%= inv.id %>/print-thermal" class="btn text-white fw-bold flex-fill shadow" style="background: linear-gradient(135deg, #059669, #10b981); border:none; border-radius:10px; padding:8px; font-size:12px; display:flex; align-items:center; justify-content:center; gap:6px; text-decoration:none;" target="_blank">
+                              <i class="bi bi-receipt" style="font-size:15px; color:#ffffff;"></i> <span>Struk Thermal</span>
+                            </a>
+                            <a href="/customer/invoice/<%= inv.id %>/print" class="btn text-white fw-bold flex-fill shadow" style="background: linear-gradient(135deg, #4f46e5, #6366f1); border:none; border-radius:10px; padding:8px; font-size:12px; display:flex; align-items:center; justify-content:center; gap:6px; text-decoration:none;" target="_blank">
+                              <i class="bi bi-printer-fill" style="font-size:15px; color:#ffffff;"></i> <span>Faktur A4</span>
+                            </a>
+                            <a href="/customer/invoice/<%= inv.id %>/pdf" class="btn text-white fw-bold flex-fill shadow" style="background: linear-gradient(135deg, #0284c7, #06b6d4); border:none; border-radius:10px; padding:8px; font-size:12px; display:flex; align-items:center; justify-content:center; gap:6px; text-decoration:none;" target="_blank">
+                              <i class="bi bi-file-earmark-pdf-fill" style="font-size:15px; color:#ffffff;"></i> <span>PDF</span>
+                            </a>
+                          </div>
+                        <% } %>
+                      </div>
+                    </div>
+                  <% }) %>
+                </div>
+              <% } else { %>
+                <div class="text-center text-white py-4" style="background:rgba(15,23,42,0.6); border-radius:12px; font-size:13px;">Belum ada riwayat tagihan</div>
+              <% } %>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TIKET KELUHAN ACCORDION -->
+      <div class="accordion-item glass-card mb-3" id="ticket-section">
+        <h2 class="accordion-header">
+          <button class="accordion-button collapsed bg-transparent text-white fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTicket">
+            <i class="bi bi-headset me-2 text-purple" style="color:#a855f7;"></i> Tiket Keluhan & Bantuan
+          </button>
+        </h2>
+        <div id="collapseTicket" class="accordion-collapse collapse" data-bs-parent="#customerAccordion">
+          <div class="accordion-body p-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h6 class="fw-bold text-white mb-0">Daftar Tiket Keluhan Anda</h6>
+              <button class="btn btn-primary btn-sm fw-bold" onclick="const m = new bootstrap.Modal(document.getElementById('ticketModal')); m.show();" style="border-radius:10px; background:linear-gradient(135deg,#6366f1,#3b82f6); border:none;">
+                <i class="bi bi-plus-lg me-1"></i> Buat Tiket
+              </button>
+            </div>
+            <% if (tickets && tickets.length > 0) { %>
+              <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                  <thead>
+                    <tr>
+                      <th class="text-white">ID Tiket</th>
+                      <th class="text-white">Jenis Kendala</th>
+                      <th class="text-white">Tanggal</th>
+                      <th class="text-white">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% tickets.forEach(t => { %>
+                      <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); background:rgba(30,41,59,0.4);">
+                        <td class="fw-bold text-info">#TK-<%= t.id %></td>
+                        <td class="text-white"><%= t.subject %></td>
+                        <td class="text-muted"><%= t.created_at %></td>
+                        <td>
+                          <span class="badge <%= t.status === 'open' ? 'bg-warning text-dark' : t.status === 'in_progress' ? 'bg-info text-dark' : 'bg-success' %>" style="border-radius:8px;">
+                            <%= t.status === 'open' ? 'TERKIRIM' : t.status === 'in_progress' ? 'DIPROSES TEKNISI' : 'SELESAI' %>
+                          </span>
+                        </td>
+                      </tr>
+                    <% }) %>
+                  </tbody>
+                </table>
+              </div>
+            <% } else { %>
+              <div class="text-center text-muted py-4">Belum ada tiket keluhan yang dibuat.</div>
+            <% } %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SPEEDTEST MODAL -->
+  <div class="modal fade" id="speedtestModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+      <div class="modal-content" style="border-radius:20px;overflow:hidden;border:1px solid #dbe7f3;background:#fff;">
+        <div class="modal-header border-0 py-3 px-4" style="background:linear-gradient(135deg,#075dbd,#0ea5e9);color:#fff;">
+          <div>
+            <h5 class="modal-title fw-bold mb-0"><i class="bi bi-speedometer2 me-2"></i>Speedtest Internet</h5>
+            <div style="font-size:12px;opacity:.9;">Uji kecepatan koneksi internet Anda</div>
+          </div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Tutup"></button>
+        </div>
+        <div class="modal-body p-0" style="background:#f5f8fc;">
+          <iframe id="speedtestFrame" title="Speedtest" style="display:block;width:100%;height:620px;border:0;background:#fff;" loading="lazy" allow="fullscreen"></iframe>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAYMENT METHODS MODAL -->
+  <div class="modal fade" id="paymentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content" style="background:#0f172a; border:1px solid rgba(99,102,241,0.3); border-radius:24px; color:#fff; box-shadow:0 25px 70px rgba(0,0,0,0.6);">
+        <div class="modal-header border-0 pb-0" style="padding:24px 24px 10px;">
+          <h5 class="modal-title fw-bold text-white fs-5"><i class="bi bi-credit-card-2-front me-2 text-warning fs-4"></i>Pilihan Metode Pembayaran</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <!-- AMOUNT DISPLAY CARD -->
+          <div class="text-center mb-4 p-3 rounded-4" style="background:rgba(30,41,59,0.9); border:1px solid rgba(245,158,11,0.4); box-shadow:inset 0 1px 0 rgba(255,255,255,0.05);">
+            <div class="fw-bold small mb-1" style="color:#cbd5e1; font-size:13px; text-transform:uppercase; letter-spacing:0.5px;">Total Tagihan Harus Dibayar</div>
+            <h2 class="fw-extrabold text-warning mb-0" style="font-size:28px; color:#fbbf24; text-shadow:0 2px 10px rgba(245,158,11,0.3);" id="pay_amount_text">Rp 0</h2>
+          </div>
+
+          <div class="d-grid gap-3">
+            <!-- DYNAMIC CHANNELS OR DEFAULTS -->
+            <% if (typeof paymentChannels !== 'undefined' && paymentChannels && paymentChannels.length > 0) { %>
+              <% paymentChannels.forEach(ch => { %>
+                <button class="btn btn-outline-light p-3 text-start d-flex align-items-center justify-content-between" onclick="submitPayment('<%= ch.code %>')" style="border-radius:16px; border:1px solid rgba(99,102,241,0.35); background:rgba(30,41,59,0.75); transition:all 0.2s ease;">
+                  <div class="d-flex align-items-center gap-3">
+                    <div style="width:44px; height:44px; border-radius:12px; background:rgba(99,102,241,0.2); display:flex; align-items:center; justify-content:center; color:#818cf8; font-size:20px; font-weight:bold;">
+                      <% if (ch.code.includes('QRIS') || ch.code.includes('SNAP') || ch.code.includes('XENDIT') || ch.code.includes('DUITKU')) { %>
+                        <i class="bi bi-qr-code-scan text-info"></i>
+                      <% } else { %>
+                        <i class="bi bi-bank text-success"></i>
+                      <% } %>
+                    </div>
+                    <div>
+                      <div class="fw-bold text-white" style="font-size:15px;"><%= ch.name %></div>
+                      <div class="small fw-semibold" style="color:#cbd5e1; font-size:12px;"><%= ch.group || 'Metode Pembayaran Online' %></div>
+                    </div>
+                  </div>
+                  <span class="badge bg-primary text-white px-2 py-1" style="font-size:11px; border-radius:6px;">PILIH <i class="bi bi-chevron-right ms-1"></i></span>
+                </button>
+              <% }) %>
+            <% } else { %>
+              <!-- DEFAULT QRIS -->
+              <button class="btn btn-outline-light p-3 text-start d-flex align-items-center justify-content-between" onclick="submitPayment('qris')" style="border-radius:16px; border:1px solid rgba(99,102,241,0.4); background:linear-gradient(135deg, rgba(99,102,241,0.18) 0%, rgba(30,41,59,0.8) 100%);">
+                <div class="d-flex align-items-center gap-3">
+                  <div style="width:46px; height:46px; border-radius:12px; background:rgba(6,182,212,0.2); border:1px solid rgba(6,182,212,0.4); display:flex; align-items:center; justify-content:center; color:#38bdf8; font-size:22px;">
+                    <i class="bi bi-qr-code-scan"></i>
+                  </div>
+                  <div>
+                    <div class="fw-bold text-white" style="font-size:15px;">QRIS Instant (Semua E-Wallet)</div>
+                    <div class="small fw-semibold" style="color:#cbd5e1; font-size:12px;">DANA, GoPay, OVO, ShopeePay, Mobile Banking</div>
+                  </div>
+                </div>
+                <i class="bi bi-chevron-right text-info fs-5"></i>
+              </button>
+
+              <!-- DEFAULT BANK TRANSFER -->
+              <button class="btn btn-outline-light p-3 text-start d-flex align-items-center justify-content-between" onclick="submitPayment('bank_transfer')" style="border-radius:16px; border:1px solid rgba(16,185,129,0.4); background:linear-gradient(135deg, rgba(16,185,129,0.15) 0%, rgba(30,41,59,0.8) 100%);">
+                <div class="d-flex align-items-center gap-3">
+                  <div style="width:46px; height:46px; border-radius:12px; background:rgba(16,185,129,0.2); border:1px solid rgba(16,185,129,0.4); display:flex; align-items:center; justify-content:center; color:#34d399; font-size:22px;">
+                    <i class="bi bi-bank"></i>
+                  </div>
+                  <div>
+                    <div class="fw-bold text-white" style="font-size:15px;">Virtual Account / Transfer Bank</div>
+                    <div class="small fw-semibold" style="color:#cbd5e1; font-size:12px;">BCA, BRI, BNI, Mandiri, Permata</div>
+                  </div>
+                </div>
+                <i class="bi bi-chevron-right text-success fs-5"></i>
+              </button>
+            <% } %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NOTIFICATION DRAWER MODAL -->
+  <div class="modal fade" id="notifDrawerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-end modal-dialog-scrollable">
+      <div class="modal-content notif-drawer-content" style="border-radius:20px 0 0 20px;">
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title fw-bold"><i class="bi bi-bell-fill me-2 text-warning"></i>Pusat Notifikasi</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-4" id="notifListContainer">
+          <!-- DYNAMIC NOTIFICATIONS -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL EDIT SSID -->
+  <div class="modal fade" id="editSsidModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content" style="background:#0f172a; border:1px solid rgba(6,182,212,0.4); border-radius:24px; color:#fff; box-shadow:0 25px 70px rgba(0,0,0,0.6);">
+        <div class="modal-header border-0 pb-0" style="padding:24px 24px 10px;">
+          <h5 class="modal-title fw-bold text-white fs-5"><i class="bi bi-wifi me-2 text-info fs-4"></i>Ubah Nama WiFi (SSID)</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form action="/customer/change-ssid" method="POST">
+          <div class="modal-body p-4">
+            <div class="mb-3">
+              <label class="form-label fw-bold" style="color:#f8fafc; font-size:13px;">Nama WiFi (SSID) Baru</label>
+              <input type="text" name="ssid" id="modalSsidInput" class="form-control text-white p-3" style="background:rgba(30,41,59,0.95); border:1px solid rgba(6,182,212,0.4); border-radius:14px; font-weight:600; color:#ffffff;" placeholder="Contoh: WiFi_Rumah_Keluarga" required>
+              <div class="form-text small" style="color:#e2e8f0; font-weight:600;">Format nama WiFi bebas. Perangkat akan terputus sesaat setelah nama WiFi diubah.</div>
+            </div>
+          </div>
+          <div class="modal-footer border-0 pt-0 pb-4 px-4 d-flex gap-2">
+            <button type="button" class="btn btn-outline-secondary px-4 text-white" data-bs-dismiss="modal" style="border-radius:12px;">Batal</button>
+            <button type="submit" class="btn btn-info text-dark fw-bold px-4 flex-grow-1" style="border-radius:12px;">Simpan Nama WiFi</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL EDIT PASSWORD -->
+  <div class="modal fade" id="editPasswordModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content" style="background:#0f172a; border:1px solid rgba(16,185,129,0.4); border-radius:24px; color:#fff; box-shadow:0 25px 70px rgba(0,0,0,0.6);">
+        <div class="modal-header border-0 pb-0" style="padding:24px 24px 10px;">
+          <h5 class="modal-title fw-bold text-white fs-5"><i class="bi bi-shield-lock me-2 text-success fs-4"></i>Ubah Password WiFi</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form action="/customer/change-password" method="POST">
+          <div class="modal-body p-4">
+            <div class="mb-3">
+              <label class="form-label fw-bold" style="color:#f8fafc; font-size:13px;">Password WiFi Baru (Minimal 8 Karakter)</label>
+              <input type="password" name="password" id="modalPassInput" class="form-control text-white p-3" minlength="8" style="background:rgba(30,41,59,0.95); border:1px solid rgba(16,185,129,0.4); border-radius:14px; font-weight:600; color:#ffffff;" placeholder="Contoh: Rahasia12345" required>
+              <div class="form-text small" style="color:#e2e8f0; font-weight:600;">Gunakan minimal 8 kombinasi huruf dan angka. Simpan password baru ini baik-baik.</div>
+            </div>
+          </div>
+          <div class="modal-footer border-0 pt-0 pb-4 px-4 d-flex gap-2">
+            <button type="button" class="btn btn-outline-secondary px-4 text-white" data-bs-dismiss="modal" style="border-radius:12px;">Batal</button>
+            <button type="submit" class="btn btn-success text-white fw-bold px-4 flex-grow-1" style="border-radius:12px;">Simpan Password</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL REBOOT DEVICE -->
+  <div class="modal fade" id="rebootModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content" style="background:#0f172a; border:1px solid rgba(245,158,11,0.4); border-radius:24px; color:#fff; box-shadow:0 25px 70px rgba(0,0,0,0.6);">
+        <div class="modal-header border-0 pb-0" style="padding:24px 24px 10px;">
+          <h5 class="modal-title fw-bold text-white fs-5"><i class="bi bi-arrow-clockwise me-2 text-warning fs-4"></i>Reboot Router / Modem</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form action="/customer/reboot" method="POST">
+          <div class="modal-body p-4 text-center">
+            <div class="p-3 mb-3 rounded-circle bg-warning bg-opacity-10 text-warning d-inline-flex">
+              <i class="bi bi-exclamation-triangle-fill fs-1"></i>
+            </div>
+            <h6 class="fw-bold text-white mb-2">Apakah Anda yakin ingin menyalakan ulang modem?</h6>
+            <p class="small mb-0" style="color:#e2e8f0; font-weight:600;">Proses reboot membutuhkan waktu sekitar 1-2 menit. Selama booting berlangsung, koneksi internet WiFi Anda akan terputus sementara.</p>
+          </div>
+          <div class="modal-footer border-0 pt-0 pb-4 px-4 d-flex gap-2">
+            <button type="button" class="btn btn-outline-secondary px-4 text-white" data-bs-dismiss="modal" style="border-radius:12px;">Batal</button>
+            <button type="submit" class="btn btn-warning text-dark fw-bold px-4 flex-grow-1" style="border-radius:12px;">Ya, Reboot Sekarang</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL TIKET KELUHAN -->
+  <div class="modal fade" id="ticketModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content" style="background:#0f172a; border:1px solid rgba(168,85,247,0.4); border-radius:24px; color:#fff; box-shadow:0 25px 70px rgba(0,0,0,0.6);">
+        <div class="modal-header border-0 pb-0" style="padding:24px 24px 10px;">
+          <h5 class="modal-title fw-bold text-white fs-5"><i class="bi bi-headset me-2 text-purple fs-4" style="color:#a855f7;"></i>Buat Tiket Keluhan Baru</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form action="/customer/tickets/create" method="POST" enctype="multipart/form-data">
+          <input type="hidden" name="customerId" value="<%= profile ? profile.id : '' %>">
+          <div class="modal-body p-4">
+            <div class="mb-3">
+              <label class="form-label fw-bold" style="color:#f8fafc; font-size:13px;">Jenis Kendala / Subjek</label>
+              <select name="subject" class="form-select text-white p-3" style="background:rgba(30,41,59,0.95); border:1px solid rgba(168,85,247,0.4); border-radius:14px; font-weight:600; color:#ffffff;" required>
+                <option value="" disabled selected class="bg-dark text-white">-- Pilih Jenis Kendala --</option>
+                <option value="Koneksi Terputus / Tidak Bisa Konek" class="bg-dark text-white">Koneksi Terputus / Tidak Bisa Konek</option>
+                <option value="Koneksi Lambat / Lemot" class="bg-dark text-white">Koneksi Lambat / Lemot</option>
+                <option value="Lampu PON Merah / Los Sinyal" class="bg-dark text-white">Lampu PON Merah / Los Sinyal</option>
+                <option value="Kendala Lupa Password WiFi" class="bg-dark text-white">Kendala Lupa Password WiFi</option>
+                <option value="Pertanyaan Tagihan & Pembayaran" class="bg-dark text-white">Pertanyaan Tagihan & Pembayaran</option>
+                <option value="Lainnya" class="bg-dark text-white">Lainnya</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold" style="color:#f8fafc; font-size:13px;">Detail Pesan / Penjelasan Kendala</label>
+              <textarea name="message" class="form-control text-white p-3" rows="3" style="background:rgba(30,41,59,0.95); border:1px solid rgba(168,85,247,0.4); border-radius:14px; font-weight:600; color:#ffffff;" placeholder="Contoh: Lampu indikator PON kedap-kedip merah sejak tadi pagi di Dusun Janggar..." required></textarea>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold" style="color:#f8fafc; font-size:13px;">Foto Lampiran (Opsional)</label>
+              <input type="file" name="photos" class="form-control text-white" accept="image/*" multiple style="background:rgba(30,41,59,0.95); border:1px solid rgba(168,85,247,0.4); border-radius:14px; color:#ffffff;">
+            </div>
+          </div>
+          <div class="modal-footer border-0 pt-0 pb-4 px-4 d-flex gap-2">
+            <button type="button" class="btn btn-outline-secondary px-4 text-white" data-bs-dismiss="modal" style="border-radius:12px;">Batal</button>
+            <button type="submit" class="btn text-white fw-bold px-4 flex-grow-1" style="background:linear-gradient(135deg,#a855f7,#7c3aed); border-radius:12px;">Kirim Tiket Keluhan</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- UPGRADE SPEED MODAL -->
+  <div class="modal fade" id="upgradeSpeedModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content" style="background:#fff; border:1px solid #dbe7f3; border-radius:22px; color:#17304e;">
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title fw-bold"><i class="bi bi-speedometer2 me-2" style="color:#ea580c;"></i>Upgrade Kecepatan</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <form action="/customer/tickets/create" method="POST">
+          <input type="hidden" name="customerId" value="<%= profile ? profile.id : '' %>">
+          <input type="hidden" name="subject" value="Permintaan Upgrade Paket / Kecepatan">
+          <div class="modal-body">
+            <p style="color:#61748b;">Ajukan perubahan kecepatan. Permintaan ini akan masuk ke panel Admin/Teknisi agar paket dan profil jaringan dapat diperiksa sebelum diganti.</p>
+            <div class="p-3 rounded-3 mb-3" style="background:#f7faff;border:1px solid #dfe8f2;">
+              <div class="fw-bold" style="color:#17304e;">Pilih Paket & Kecepatan</div>
+              <div class="small" style="color:#61748b;">Harga dan kecepatan di bawah diambil langsung dari daftar paket ISP.</div>
+            </div>
+
+            <div class="upgrade-package-list" style="display:grid;gap:10px;max-height:330px;overflow-y:auto;padding:2px;">
+              <% (upgradePackages || []).forEach(function(pkg) {
+                const down = Number(pkg.speed_down || 0) / 1000;
+                const up = Number(pkg.speed_up || 0) / 1000;
+                const price = Number(pkg.promo_price || 0) > 0 ? Number(pkg.promo_price) : Number(pkg.price || 0);
+                const isCurrent = profile && Number(profile.package_id) === Number(pkg.id);
+              %>
+                <label class="upgrade-package-option" style="display:block;cursor:pointer;margin:0;">
+                  <input type="radio" name="upgrade_package_id" value="<%= pkg.id %>" data-package-name="<%= String(pkg.name || '').replace(/"/g, '&quot;') %>" data-price="<%= price %>" data-down="<%= down %>" data-up="<%= up %>" <%= isCurrent ? 'checked' : '' %> style="display:none;">
+                  <span style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 14px;border:2px solid <%= isCurrent ? '#0d6efd' : '#dbe7f3' %>;border-radius:14px;background:<%= isCurrent ? '#eef6ff' : '#fff' %>;">
+                    <span>
+                      <strong style="display:block;color:#17304e;font-size:14px;"><%= pkg.name || 'Paket Internet' %> <%= isCurrent ? '<small style="color:#0d6efd;">(Paket Saat Ini)</small>' : '' %></strong>
+                      <span style="display:block;color:#52677f;font-size:12px;margin-top:3px;">
+                        <i class="bi bi-lightning-charge-fill" style="color:#ea580c;"></i>
+                        Download <strong><%= down ? down : '-' %> Mbps</strong>
+                        <span style="margin:0 5px;">•</span>
+                        Upload <strong><%= up ? up : '-' %> Mbps</strong>
+                      </span>
+                    </span>
+                    <span style="text-align:right;white-space:nowrap;">
+                      <strong style="display:block;color:#0d6efd;font-size:14px;">Rp <%= price.toLocaleString('id-ID') %></strong>
+                      <small style="color:#718096;">/ bulan</small>
+                    </span>
+                  </span>
+                </label>
+              <% }) %>
+              <% if (!(upgradePackages || []).length) { %>
+                <div class="text-center p-3" style="color:#718096;background:#f7faff;border-radius:12px;">Daftar paket belum tersedia.</div>
+              <% } %>
+            </div>
+
+            <label class="form-label fw-bold mt-3" style="color:#52677f;font-size:13px;">Paket yang dipilih</label>
+            <input type="text" id="upgradeSelectedPackage" class="form-control" readonly placeholder="Pilih salah satu paket di atas" style="border-radius:12px;border:1px solid #dbe7f3;background:#f8fafc;">
+            <textarea name="message" id="upgradeMessage" class="form-control mt-2" rows="3" required placeholder="Keterangan tambahan (opsional)" style="border-radius:12px;border:1px solid #dbe7f3;"></textarea>
+          </div>
+          <div class="modal-footer border-0 pt-0">
+            <button type="button" class="btn btn-outline-secondary fw-bold" data-bs-dismiss="modal" style="border-radius:12px;">Batal</button>
+            <button type="submit" class="btn btn-primary fw-bold flex-grow-1" style="border-radius:12px;">Kirim Permintaan Upgrade</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <%- include('partials/customer_bottom_nav', { activeNav: 'home' }) %>
+
+  <!-- JAVASCRIPT HANDLERS -->
+  <script>
+    let currentInvId = null;
+    let pModal = null;
+
+    function openSpeedtest() {
+      // Speedtest lokal Intercity: pelanggan -> MikroTik -> server portal.
+      window.location.href = '/speedtest/';
+    }
+
+    function upgradeSpeed() {
+      const el = document.getElementById('upgradeSpeedModal');
+      if (!el) return;
+      new bootstrap.Modal(el).show();
+      setTimeout(initUpgradePackagePicker, 50);
+    }
+
+    function initUpgradePackagePicker() {
+      const modal = document.getElementById('upgradeSpeedModal');
+      if (!modal || modal.dataset.pickerReady === '1') return;
+      modal.dataset.pickerReady = '1';
+      const selected = document.getElementById('upgradeSelectedPackage');
+      const message = document.getElementById('upgradeMessage');
+      const radios = modal.querySelectorAll('input[name="upgrade_package_id"]');
+      const update = (radio) => {
+        if (!radio) return;
+        const name = radio.dataset.packageName || 'Paket Internet';
+        const price = Number(radio.dataset.price || 0).toLocaleString('id-ID');
+        const down = radio.dataset.down || '-';
+        const up = radio.dataset.up || '-';
+        if (selected) selected.value = name + ' — ' + down + ' Mbps download / ' + up + ' Mbps upload — Rp ' + price + '/bulan';
+        if (message && !message.value.trim()) {
+          message.value = 'Saya ingin upgrade ke paket ' + name + ' (' + down + ' Mbps download / ' + up + ' Mbps upload), harga Rp ' + price + '/bulan.';
+        }
+        radios.forEach(r => {
+          const box = r.nextElementSibling;
+          if (box) {
+            box.style.borderColor = r.checked ? '#0d6efd' : '#dbe7f3';
+            box.style.background = r.checked ? '#eef6ff' : '#fff';
+          }
+        });
+      };
+      radios.forEach(r => r.addEventListener('change', () => update(r)));
+      const checked = modal.querySelector('input[name="upgrade_package_id"]:checked');
+      if (checked) update(checked);
+    }
+
+    function openPaymentModal(invId, amount) {
+      currentInvId = invId;
+      let num = 0;
+      if (typeof amount === 'number') {
+        num = isNaN(amount) ? 0 : amount;
+      } else if (amount) {
+        const clean = String(amount).replace(/[^0-9.]/g, '');
+        num = parseFloat(clean) || 0;
+      }
+      document.getElementById('pay_amount_text').innerText = 'Rp ' + Math.round(num).toLocaleString('id-ID');
+      if (!pModal) pModal = new bootstrap.Modal(document.getElementById('paymentModal'));
+      pModal.show();
+    }
+
+    function submitPayment(method) {
+      if (!currentInvId) return;
+      window.location.href = `/customer/payment/create/${currentInvId}?method=${method}`;
+    }
+
+    function togglePassVisibility() {
+      const input = document.getElementById('wifiPassInput');
+      const icon = document.getElementById('eyeIcon');
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.className = 'bi bi-eye-slash';
+      } else {
+        input.type = 'password';
+        icon.className = 'bi bi-eye';
+      }
+    }
+
+    function openNotifDrawer() {
+      const modal = new bootstrap.Modal(document.getElementById('notifDrawerModal'));
+      modal.show();
+    }
+
+    function editSsid(deviceId, currentSsid) {
+      document.getElementById('modalSsidInput').value = currentSsid || '';
+      const m = new bootstrap.Modal(document.getElementById('editSsidModal'));
+      m.show();
+    }
+
+    function editPassword(deviceId) {
+      document.getElementById('modalPassInput').value = '';
+      const m = new bootstrap.Modal(document.getElementById('editPasswordModal'));
+      m.show();
+    }
+
+    function rebootDevice(deviceId) {
+      const m = new bootstrap.Modal(document.getElementById('rebootModal'));
+      m.show();
+    }
+
+    // LIVE TRAFFIC GAUGES CANVAS
+    function drawGauge(canvasId, valueMbps, maxMbps, strokeColor) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width;
+      const h = canvas.height;
+      const cx = w / 2;
+      const cy = h - 20;
+      const radius = 75;
+
+      ctx.clearRect(0, 0, w, h);
+
+      // Track Arc (180 deg)
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, Math.PI, 2 * Math.PI, false);
+      ctx.lineWidth = 14;
+      ctx.strokeStyle = 'rgba(30, 41, 59, 0.8)';
+      ctx.lineCap = 'round';
+      ctx.stroke();
+
+      // Progress Arc
+      const val = Math.min(Math.max(0, valueMbps), maxMbps);
+      const ratio = maxMbps > 0 ? val / maxMbps : 0;
+      const endAngle = Math.PI + ratio * Math.PI;
+
+      if (ratio > 0) {
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius, Math.PI, endAngle, false);
+        ctx.lineWidth = 14;
+        ctx.strokeStyle = strokeColor;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+      }
+    }
+
+    let customerTrafficFetchInFlight = false;
+    async function fetchTrafficData() {
+      if (customerTrafficFetchInFlight) return;
+      customerTrafficFetchInFlight = true;
+      try {
+        const res = await fetch('/customer/api/pppoe-traffic', { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json();
+
+        const rxGauge = document.getElementById('pppoe_rx_gauge');
+        const txGauge = document.getElementById('pppoe_tx_gauge');
+
+        const maxDown = parseFloat(rxGauge?.dataset?.max) || 10;
+        const maxUp = parseFloat(txGauge?.dataset?.max) || 10;
+
+        const rx = parseFloat(data.rxMbps || data.rx_rate || 0) || 0;
+        const tx = parseFloat(data.txMbps || data.tx_rate || 0) || 0;
+
+        const rxValEl = document.getElementById('pppoe_rx_value');
+        const rxUnitEl = document.getElementById('pppoe_rx_unit');
+        if (rxValEl) rxValEl.innerText = rx < 0.1 ? (rx * 1000).toFixed(0) : rx.toFixed(2);
+        if (rxUnitEl) rxUnitEl.innerText = rx < 0.1 ? 'Kbps' : 'Mbps';
+
+        const txValEl = document.getElementById('pppoe_tx_value');
+        const txUnitEl = document.getElementById('pppoe_tx_unit');
+        if (txValEl) txValEl.innerText = tx < 0.1 ? (tx * 1000).toFixed(0) : tx.toFixed(2);
+        if (txUnitEl) txUnitEl.innerText = tx < 0.1 ? 'Kbps' : 'Mbps';
+
+        drawGauge('pppoe_rx_gauge', rx, maxDown, '#06b6d4');
+        drawGauge('pppoe_tx_gauge', tx, maxUp, '#10b981');
+      } catch (e) {
+        console.error('[Traffic] Fetch error:', e);
+      } finally {
+        customerTrafficFetchInFlight = false;
+      }
+    }
+
+    function formatUsageBytes(bytes) {
+      const n = Number(bytes || 0);
+      if (!Number.isFinite(n) || n <= 0) return '0 B';
+      const units = ['B','KB','MB','GB','TB'];
+      const i = Math.min(Math.floor(Math.log(n) / Math.log(1024)), units.length - 1);
+      const value = n / Math.pow(1024, i);
+      return `${value >= 100 ? value.toFixed(0) : value >= 10 ? value.toFixed(1) : value.toFixed(2)} ${units[i]}`;
+    }
+
+    async function fetchDataUsage() {
+      try {
+        const res = await fetch('/customer/api/data-usage', { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json();
+        const d = document.getElementById('usageDownload');
+        const u = document.getElementById('usageUpload');
+        const t = document.getElementById('usageTotal');
+        const updated = document.getElementById('usageUpdated');
+        if (!data.available) {
+          if (d) d.textContent = '-'; if (u) u.textContent = '-'; if (t) t.textContent = '-';
+          if (updated) updated.textContent = 'Data pemakaian belum tersedia';
+          return;
+        }
+        if (d) d.textContent = formatUsageBytes(data.bytesIn);
+        if (u) u.textContent = formatUsageBytes(data.bytesOut);
+        if (t) t.textContent = formatUsageBytes(data.totalBytes);
+        if (updated) {
+          const when = data.updatedAt ? new Date(data.updatedAt).toLocaleString('id-ID', { dateStyle:'short', timeStyle:'short' }) : '-';
+          updated.textContent = `Periode ${String(data.periodMonth).padStart(2,'0')}/${data.periodYear} • Terakhir diperbarui ${when}`;
+        }
+      } catch (e) {
+        console.error('[Data Usage] Fetch error:', e);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadCustomerWebNotifs();
+      fetchDataUsage();
+      setInterval(fetchDataUsage, 30000);
+      fetchTrafficData();
+      setInterval(fetchTrafficData, 15000);
+
+      const btnRefresh = document.getElementById('btnDeviceRefresh');
+      if (btnRefresh) {
+        btnRefresh.addEventListener('click', async () => {
+          btnRefresh.disabled = true;
+          btnRefresh.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Memeriksa ONU...';
+          try {
+            const res = await fetch('/customer/api/device/refresh', {
+              method: 'POST',
+              headers: { 'Accept': 'application/json' }
+            });
+            const result = await res.json().catch(() => ({}));
+            if (!res.ok || result.ok === false) {
+              throw new Error(result.message || 'Gagal memulai Poll ONU');
+            }
+            const notice = document.getElementById('deviceSyncNotice');
+            const lastInformEl = document.getElementById('customerLastInform');
+            const beforeInform = String(lastInformEl?.dataset?.lastInform || '');
+            if (notice) notice.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Poll ONU dimulai, menunggu ONU merespons...';
+
+            // Tunggu GenieACS menerima Inform terbaru sebelum reload.
+            let checks = 0;
+            const waitForInform = async () => {
+              checks++;
+              try {
+                const sr = await fetch('/customer/api/device/sync-status', { cache: 'no-store' });
+                const sd = await sr.json().catch(() => ({}));
+                const currentInform = String(sd.lastInform || '');
+                if (sd.ok && currentInform && currentInform !== beforeInform) {
+                  if (notice) notice.innerHTML = '<i class="bi bi-check-circle-fill me-1 text-success"></i> Data ONU berhasil diperbarui.';
+                  setTimeout(() => location.reload(), 500);
+                  return;
+                }
+              } catch (pollErr) {}
+              if (checks < 12) {
+                setTimeout(waitForInform, 2500);
+              } else {
+                if (notice) notice.innerHTML = '<i class="bi bi-info-circle me-1"></i> Poll sudah dikirim. ONU belum mengirim data terbaru, cek kembali beberapa saat lagi.';
+                btnRefresh.disabled = false;
+                btnRefresh.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i> Poll ONU Sekarang';
+              }
+            };
+            setTimeout(waitForInform, 2500);
+          } catch (e) {
+            location.reload();
+          }
+        });
+      }
+    });
+
+    function loadCustomerWebNotifs() {
+      const container = document.getElementById('notifListContainer');
+      if (!container) return;
+
+      const notifs = [];
+      <% if (paidInvoices && paidInvoices.length > 0) { %>
+        <% paidInvoices.slice(0, 3).forEach(inv => { %>
+          <% const pAmt = inv.amount != null ? inv.amount : (inv.package_price != null ? inv.package_price : 0); %>
+          notifs.push({
+            id: 'paid-<%= inv.id %>',
+            type: 'payment',
+            title: 'Pelunasan Tagihan Berhasil',
+            message: 'Tagihan bulan <%= inv.period_month %>/<%= inv.period_year %> sebesar Rp <%= parseInt(pAmt || 0).toLocaleString("id-ID") %> telah LUNAS.',
+            time: 'Terkonfirmasi Sistem'
+          });
+        <% }) %>
+      <% } %>
+
+      <% if (hasUnpaid) { %>
+        <% const uAmt = latestUnpaid.amount != null ? latestUnpaid.amount : (latestUnpaid.package_price != null ? latestUnpaid.package_price : 0); %>
+        notifs.push({
+          id: 'unpaid-latest',
+          type: 'warning',
+          title: 'Pengingat Tagihan Bulanan',
+          message: 'Tagihan bulan <%= latestUnpaid.period_month %>/<%= latestUnpaid.period_year %> sebesar Rp <%= parseInt(uAmt || 0).toLocaleString("id-ID") %> menunggu pembayaran.',
+          time: 'Jatuh Tempo Tgl 20'
+        });
+      <% } %>
+
+      const badge = document.getElementById('notifCountBadge');
+      if (badge && notifs.length > 0) {
+        badge.innerText = notifs.length;
+        badge.style.display = 'flex';
+      }
+
+      if (notifs.length === 0) {
+        container.innerHTML = '<div class="text-center text-muted py-4"><i class="bi bi-bell-slash fs-1 d-block mb-2"></i>Belum ada notifikasi baru</div>';
+      } else {
+        container.innerHTML = notifs.map(n => `
+          <div class="notif-item ${n.type === 'payment' ? 'unread' : ''}">
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <i class="bi bi-${n.type === 'payment' ? 'check-circle-fill text-success' : 'exclamation-circle-fill text-warning'}"></i>
+              <span class="fw-bold small text-white">${n.title}</span>
+            </div>
+            <div class="small text-slate-300 mb-1" style="font-size:12px;">${n.message}</div>
+            <div class="text-muted" style="font-size:10px;">${n.time}</div>
+          </div>
+        `).join('');
+      }
+    }
+  </script>
+  <style>
+    #customerAiLauncher{position:fixed;right:18px;bottom:24px;z-index:1060;border:0;border-radius:999px;padding:13px 18px;background:linear-gradient(135deg,#2563eb,#1747a6);color:#fff;box-shadow:0 8px 26px #0d47a133;font-weight:800;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;max-width:calc(100vw - 28px);touch-action:manipulation}
+    #customerAiPanel{position:fixed;right:18px;bottom:88px;z-index:1061;width:min(380px,calc(100vw - 28px));height:min(500px,calc(100dvh - 120px));background:#fff;border:1px solid #dbe3ee;border-radius:20px;box-shadow:0 18px 50px #0f172a33;display:none;overflow:hidden;color:#172033}
+    #customerAiHead{padding:15px 16px;background:linear-gradient(135deg,#1d4ed8,#173a8a);color:white;display:flex;justify-content:space-between;align-items:center;gap:12px}
+    #customerAiHead strong{font-size:15px;letter-spacing:.2px}
+    #customerAiHead button{flex-shrink:0;min-width:36px;min-height:36px;border-radius:10px!important}
+    #customerAiMessages{padding:13px;flex:1;overflow:auto;background:#f6f8fc}
+    #customerAiMessages .ai-msg{padding:10px 12px;margin:8px 0;border-radius:14px;max-width:92%;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;line-height:1.5}
+    #customerAiMessages .ai-user{margin-left:auto;background:#dbeafe;border:1px solid #bfdbfe}
+    #customerAiMessages .ai-bot{margin-right:auto;background:#fff;border:1px solid #e2e8f0;box-shadow:0 2px 6px #0f172a08}
+    #customerAiForm{display:flex;gap:8px;padding:11px;border-top:1px solid #e2e8f0;background:#fff}
+    #customerAiInput{flex:1;min-width:0;border:1px solid #cbd5e1;border-radius:12px;padding:11px;color:#172033;font-size:14px}
+    #customerAiSend{border:0;border-radius:12px;background:#1d4ed8;color:#fff;padding:0 15px;font-weight:800}
+    #customerAiSend:disabled{opacity:.65}
+    @media(max-width:991.98px){
+      .container.mt-4{padding-bottom:calc(105px + env(safe-area-inset-bottom, 0px))!important}
+      #customerAiLauncher{right:12px;bottom:calc(86px + env(safe-area-inset-bottom, 0px));}
+      #customerAiPanel{right:10px;bottom:calc(145px + env(safe-area-inset-bottom, 0px));width:calc(100vw - 20px);height:min(440px,calc(100dvh - 215px - env(safe-area-inset-bottom, 0px)));max-height:calc(100dvh - 215px - env(safe-area-inset-bottom, 0px));}
+    }
+    @media(min-width:992px){
+      #customerAiLauncher{right:24px;bottom:24px}
+      #customerAiPanel{right:24px;bottom:88px;width:380px;height:min(500px,calc(100dvh - 120px))}
+    }
+    #customerAiPanel.open{display:flex;flex-direction:column}
+  </style>
+  <button id="customerAiLauncher" type="button" aria-label="Buka AI Pelanggan"><i class="bi bi-stars" aria-hidden="true"></i><span>Tanya AI</span></button>
+  <section id="customerAiPanel" role="dialog" aria-label="AI Bantuan Pelanggan" aria-modal="false">
+    <div id="customerAiHead"><div><strong>AI Pelanggan</strong><div style="font-size:11px;opacity:.92;margin-top:3px">Bantuan tagihan, koneksi & layanan</div></div><button id="customerAiClose" type="button" aria-label="Tutup chat" style="border:0;background:rgba(255,255,255,.14);color:white;font-size:22px">×</button></div>
+    <div id="customerAiMessages" aria-live="polite"><div class="ai-msg ai-bot">Halo! Saya AI Pelanggan. Ada yang bisa saya bantu tentang layanan internet atau tagihan?</div></div>
+    <form id="customerAiForm"><input id="customerAiInput" maxlength="1200" autocomplete="off" placeholder="Tulis pertanyaan..." aria-label="Pesan untuk AI" required><button id="customerAiSend" type="submit">Kirim</button></form>
+  </section>
+  <script>
+  (() => {
+    const launcher=document.getElementById('customerAiLauncher'),panel=document.getElementById('customerAiPanel'),close=document.getElementById('customerAiClose'),form=document.getElementById('customerAiForm'),input=document.getElementById('customerAiInput'),messages=document.getElementById('customerAiMessages'),send=document.getElementById('customerAiSend');
+    if(!launcher||!panel||!form||!messages)return;
+    const add=(text,who)=>{const el=document.createElement('div');el.className='ai-msg '+(who==='user'?'ai-user':'ai-bot');el.textContent=String(text||'');messages.appendChild(el);messages.scrollTop=messages.scrollHeight;};
+    launcher.addEventListener('click',()=>{panel.classList.toggle('open');if(panel.classList.contains('open'))input.focus();});
+    close.addEventListener('click',()=>panel.classList.remove('open'));
+    let loaded=false;
+    launcher.addEventListener('click',async()=>{if(loaded||!panel.classList.contains('open'))return;loaded=true;try{const r=await fetch('/customer/api/ai-customer/history',{cache:'no-store'});const d=await r.json();if(d.ok&&Array.isArray(d.messages)&&d.messages.length){messages.innerHTML='';d.messages.forEach(m=>add(m.content,m.role));}}catch(e){}});
+    form.addEventListener('submit',async ev=>{ev.preventDefault();const message=input.value.trim();if(!message)return;add(message,'user');input.value='';input.disabled=true;send.disabled=true;send.textContent='…';const wait=document.createElement('div');wait.className='ai-msg ai-bot';wait.textContent='AI sedang menjawab…';messages.appendChild(wait);messages.scrollTop=messages.scrollHeight;
+      try{const r=await fetch('/customer/api/ai-customer/chat',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({message})});const d=await r.json();wait.remove();if(!r.ok||!d.ok)throw new Error(d.error||'AI belum dapat menjawab.');add(d.answer,'assistant');}
+      catch(e){wait.remove();add(e.message||'Koneksi AI gagal. Coba lagi.','assistant');}
+      finally{input.disabled=false;send.disabled=false;send.textContent='Kirim';input.focus();}
+    });
+  })();
+  </script>
+</body>
+
+</html>
+
+<style id="hide-customer-logos">
+.logo,.logo-container,.brand-logo,.navbar-brand img,.brand img,.site-logo,.app-logo,.header-logo,[class*="logo"],[id*="logo"]{display:none!important}
+</style>
+
+<style id="customer-readable-finish">
+/* Global readability pass: darker text, comfortable sizes, clear controls */
+body{color:#172033!important}
+p,li,td,th,label,span,div{line-height:1.5}
+.text-muted,.muted,.small,.form-text,.help-text,.hint,.subtitle,.description,.p-sub,.footer,.footer-text{color:#5b6472!important;opacity:1!important}
+input::placeholder,textarea::placeholder{color:#7b8492!important;opacity:1!important}
+input,select,textarea{color:#172033!important}
+button,.btn{font-weight:700}
+table th{color:#374151!important}
+a{font-weight:600}
+@media(max-width:576px){
+ body{font-size:15px}
+ p,li,td,th,label{font-size:14px}
+ .small,.form-text,.help-text,.hint,.description,.p-sub{font-size:12.5px!important}
+ input,select,textarea{font-size:15px!important}
+ button,.btn{font-size:14px!important}
+}
+</style>

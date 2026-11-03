@@ -1,0 +1,255 @@
+<%- include('partials/header') %>
+<style>
+  .delete-sn-wrap{max-width:720px;margin:0 auto}
+  .delete-sn-card{background:#fff;border:1px solid #dbe5f2;border-radius:18px;padding:16px;box-shadow:0 5px 20px rgba(15,23,42,.04)}
+  .delete-sn-warning{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:12px;padding:12px;font-size:13px}
+  .delete-sn-status{font-size:13px;color:#475569;padding:12px 0;white-space:pre-wrap;overflow-wrap:anywhere}
+  .delete-sn-code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:800;letter-spacing:.3px;word-break:break-all}
+  .delete-sn-result{background:#f8fafc;border:1px solid #dbe5f2;border-radius:14px;padding:14px}
+  .delete-sn-result[hidden]{display:none!important}
+  .delete-sn-field{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase;font-size:16px;letter-spacing:.35px}
+  .delete-customer-picker{position:relative}.delete-customer-results{position:absolute;left:0;right:0;top:100%;z-index:1060;max-height:300px;overflow:auto;border-radius:12px;background:#fff}.delete-customer-results .list-group-item{padding:11px 12px;cursor:pointer}.delete-customer-selected{background:#f1f7ff;border:1px solid #cfe0fb;border-radius:12px;padding:11px 12px}.delete-customer-selected[hidden]{display:none!important}
+</style>
+<div class="delete-sn-wrap">
+  <div class="d-flex align-items-center gap-2 mb-3">
+    <a href="/tech/provisioning" class="btn btn-light border rounded-3" aria-label="Kembali"><i class="bi bi-arrow-left"></i></a>
+    <div><h5 class="mb-0 fw-bold">Hapus SN ONT</h5><div class="small text-secondary">Pilih pelanggan atau cari SN ONT sebelum menghapus</div></div>
+  </div>
+  <% if (msg) { %><div class="alert alert-<%= msg.type === 'error' ? 'danger' : 'success' %> rounded-4"><%= msg.text %></div><% } %>
+  <div class="delete-sn-warning mb-3"><i class="bi bi-exclamation-triangle-fill me-1"></i><strong>Perhatian:</strong> menghapus registrasi ONT yang sedang dipakai dapat memutus koneksi pelanggan. Fitur ini hanya menghapus registrasi di OLT; data pelanggan, tagihan, dan akun PPPoE billing tidak dihapus.</div>
+  <div class="delete-sn-card mb-3">
+    <label for="deleteSnCustomerSearch" class="form-label fw-semibold">Pilih pelanggan</label>
+    <div class="delete-customer-picker mb-3" id="deleteSnCustomerPicker">
+      <input id="deleteSnCustomerSearch" type="search" class="form-control rounded-3" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="deleteSnCustomerResults" aria-expanded="false" placeholder="Ketik nama, PPPoE, atau ID pelanggan...">
+      <div id="deleteSnCustomerResults" class="list-group delete-customer-results shadow-sm" role="listbox" hidden></div>
+      <select id="deleteSnCustomer" class="d-none" aria-hidden="true" tabindex="-1">
+        <option value="">Pilih pelanggan...</option>
+        <% (customers || []).forEach(c => { %>
+          <option value="<%= c.id %>" data-search="<%= [c.name,c.pppoe_username,c.id,c.address,c.olt_name,c.delete_sn].filter(Boolean).join(' ') %>" data-name="<%= c.name || '' %>" data-pppoe="<%= c.pppoe_username || '' %>" data-address="<%= c.address || '' %>" data-olt-name="<%= c.olt_name || '' %>" data-olt-id="<%= c.olt_id %>" data-sn="<%= c.delete_sn || '' %>" data-sn-state="<%= c.delete_sn_state %>">Pelanggan #<%= c.id %></option>
+        <% }) %>
+      </select>
+      <div id="deleteSnCustomerSelected" class="delete-customer-selected mt-2" hidden>
+        <div class="d-flex align-items-start justify-content-between gap-2">
+          <div class="min-w-0"><div id="deleteSnCustomerName" class="fw-semibold"></div><div id="deleteSnCustomerMeta" class="small text-secondary mt-1"></div><div id="deleteSnCustomerSn" class="small mt-1"></div></div>
+          <button type="button" id="clearDeleteSnCustomer" class="btn btn-sm btn-outline-secondary flex-shrink-0">Ganti</button>
+        </div>
+      </div>
+    </div>
+    <div class="small text-secondary mb-3">Ketik beberapa huruf atau nomor PPPoE. Pilih nama pelanggan dari hasil yang muncul. OLT dan SN akan terisi otomatis bila datanya tersedia.</div>
+    <label for="deleteSnOlt" class="form-label fw-semibold">OLT HSGQ</label>
+    <select id="deleteSnOlt" class="form-select rounded-3 mb-3">
+      <option value="">Pilih OLT...</option>
+      <% (olts || []).forEach(o => { %><option value="<%= o.id %>"><%= o.name %> — <%= o.host %></option><% }) %>
+    </select>
+    <label for="deleteSnInput" class="form-label fw-semibold">Masukkan SN ONT</label>
+    <input id="deleteSnInput" class="form-control form-control-lg rounded-3 delete-sn-field mb-3" type="text" inputmode="text" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="24" placeholder="Contoh: FHTT12345678">
+    <button type="button" class="btn btn-primary rounded-3 w-100" id="findDeleteSn"><i class="bi bi-search me-1"></i>Cari SN di OLT</button>
+    <div class="small text-secondary mt-2">Tempel SN ONT lalu tekan Cari. Tidak perlu memuat seluruh daftar ONU.</div>
+    <div id="deleteSnStatus" class="delete-sn-status" role="status" aria-live="polite" hidden></div>
+  </div>
+  <div class="delete-sn-card delete-sn-result" id="deleteSnResult" hidden>
+    <h6 class="fw-bold mb-3"><i class="bi bi-check-circle-fill text-success me-1"></i>SN Ditemukan</h6>
+    <div class="small text-secondary mb-1">Pelanggan terhubung</div><div id="foundCustomer" class="fw-semibold mb-3">Belum ada pasangan pelanggan tersimpan</div>
+    <div class="small text-secondary mb-1">Nama OLT</div><div id="foundOltName" class="fw-semibold mb-3">-</div>
+    <div class="row g-3 mb-3">
+      <div class="col-6"><div class="small text-secondary">PON</div><div id="foundPon" class="fw-bold">-</div></div>
+      <div class="col-6"><div class="small text-secondary">ID ONU</div><div id="foundOnuId" class="fw-bold">-</div></div>
+    </div>
+    <div class="small text-secondary mb-1">SN ONT terverifikasi</div><div id="foundSn" class="delete-sn-code mb-3">-</div>
+    <button type="button" class="btn btn-outline-danger rounded-3 w-100" id="deleteFoundSn"><i class="bi bi-trash3 me-1"></i>Hapus SN dari OLT</button>
+    <div class="small text-secondary mt-2">SN dan lokasi ONU akan diverifikasi ulang di server sebelum perintah hapus dikirim.</div>
+  </div>
+</div>
+<script>
+(function(){
+  const oltSelect=document.getElementById('deleteSnOlt');
+  const customerSelect=document.getElementById('deleteSnCustomer');
+  const customerSearch=document.getElementById('deleteSnCustomerSearch');
+  const customerResults=document.getElementById('deleteSnCustomerResults');
+  const customerSelected=document.getElementById('deleteSnCustomerSelected');
+  const customerName=document.getElementById('deleteSnCustomerName');
+  const customerMeta=document.getElementById('deleteSnCustomerMeta');
+  const customerSnLabel=document.getElementById('deleteSnCustomerSn');
+  const clearCustomerButton=document.getElementById('clearDeleteSnCustomer');
+  const allCustomerOptions=Array.from(customerSelect.options).slice(1);
+  const snInput=document.getElementById('deleteSnInput');
+  const findButton=document.getElementById('findDeleteSn');
+  const deleteButton=document.getElementById('deleteFoundSn');
+  const statusEl=document.getElementById('deleteSnStatus');
+  const resultEl=document.getElementById('deleteSnResult');
+  let found=null;
+  let generation=0;
+
+  function setStatus(message,isError){
+    statusEl.hidden=false;
+    statusEl.textContent=message;
+    statusEl.className='delete-sn-status'+(isError?' text-danger':'');
+  }
+  function clearResult(){
+    found=null;
+    resultEl.hidden=true;
+  }
+  function normalizeInput(){
+    snInput.value=snInput.value.trim().toUpperCase();
+    return snInput.value;
+  }
+  function hideCustomerResults(){
+    customerResults.hidden=true;
+    customerSearch.setAttribute('aria-expanded','false');
+  }
+  function customerDisplay(option){
+    const name=String(option.dataset.name||'').trim();
+    const pppoe=String(option.dataset.pppoe||'').trim();
+    return name+' — '+(pppoe?'PPPoE: '+pppoe+' — ':'')+'ID '+option.value;
+  }
+  function showCustomerResults(){
+    const query=String(customerSearch.value||'').trim().toLowerCase();
+    customerResults.replaceChildren();
+    const matches=allCustomerOptions.filter(option=>{
+      const text=(String(option.dataset.search||'')+' '+String(option.dataset.name||'')+' '+String(option.dataset.pppoe||'')).toLowerCase();
+      return !query||text.includes(query);
+    });
+    if(!matches.length){
+      const empty=document.createElement('div');empty.className='list-group-item text-muted small';
+      empty.textContent='Pelanggan tidak ditemukan. Coba nama, username PPPoE, atau ID.';customerResults.appendChild(empty);
+    }else{
+      matches.slice(0,40).forEach(option=>{
+        const button=document.createElement('button');button.type='button';button.className='list-group-item list-group-item-action text-start';button.setAttribute('role','option');
+        const title=document.createElement('div');title.className='fw-semibold';title.textContent=String(option.dataset.name||'Pelanggan');
+        const meta=document.createElement('div');meta.className='small text-secondary';
+        meta.textContent='PPPoE: '+(option.dataset.pppoe||'-')+' · ID '+option.value+' · '+(option.dataset.address||'-');
+        const state=document.createElement('div');state.className='small mt-1 '+(option.dataset.snState==='ready'?'text-success':(option.dataset.snState==='conflict'?'text-danger':'text-secondary'));
+        state.textContent=option.dataset.snState==='ready'?'SN: '+option.dataset.sn:(option.dataset.snState==='conflict'?'SN pelanggan perlu diperiksa':'SN belum tersimpan');
+        button.append(title,meta,state);
+        button.addEventListener('click',()=>selectCustomer(option));
+        customerResults.appendChild(button);
+      });
+      if(matches.length>40){const more=document.createElement('div');more.className='list-group-item small text-muted';more.textContent='Ada '+matches.length+' hasil. Tambahkan huruf agar pencarian lebih spesifik.';customerResults.appendChild(more);}
+    }
+    customerResults.hidden=false;
+    customerSearch.setAttribute('aria-expanded','true');
+  }
+  function selectCustomer(option){
+    generation++;clearResult();
+    customerSelect.value=String(option.value);
+    customerSearch.value=customerDisplay(option);
+    customerName.textContent=String(option.dataset.name||'Pelanggan');
+    customerMeta.textContent='PPPoE: '+(option.dataset.pppoe||'-')+' · ID '+option.value+' · '+(option.dataset.address||'-')+' · '+(option.dataset.oltName||'OLT belum ditetapkan');
+    const state=String(option.dataset.snState||'missing');
+    const savedSn=String(option.dataset.sn||'').trim().toUpperCase();
+    customerSnLabel.textContent=state==='ready'?'SN tersimpan: '+savedSn:(state==='conflict'?'SN Billing dan tugas binding berbeda. Perlu pemeriksaan.':'SN belum tersimpan di Billing.');
+    customerSnLabel.className='small mt-1 '+(state==='ready'?'text-success':(state==='conflict'?'text-danger':'text-warning'));
+    customerSelected.hidden=false;hideCustomerResults();
+    const targetOlt=String(option.dataset.oltId||'');
+    if(targetOlt&&Array.from(oltSelect.options).some(item=>item.value===targetOlt))oltSelect.value=targetOlt;
+    if(state==='ready'&&savedSn){
+      snInput.value=savedSn;
+      setStatus('Pelanggan dipilih. OLT dan SN terisi otomatis. Tekan Cari SN di OLT untuk memverifikasi lokasi sebelum penghapusan.',false);
+    }else if(state==='conflict'){
+      snInput.value='';
+      setStatus('Data SN pada pelanggan dan tugas binding berbeda. Jangan hapus sebelum admin memeriksa.',true);
+    }else{
+      snInput.value='';
+      setStatus('Pelanggan dipilih, tetapi SN belum tersimpan di Billing. Masukkan SN dari label ONT atau inventaris OLT secara manual.',true);
+    }
+  }
+  function clearCustomerSelection(){
+    generation++;clearResult();customerSelect.value='';customerSearch.value='';customerSelected.hidden=true;snInput.value='';
+    setStatus('Pelanggan dibatalkan. Pilih nama pelanggan atau masukkan SN secara manual.',false);
+    customerSearch.focus();showCustomerResults();
+  }
+  async function lookup(){
+    const oltId=String(oltSelect.value||'').trim();
+    const sn=normalizeInput();
+    if(!oltId){setStatus('Pilih OLT terlebih dahulu.',true);oltSelect.focus();return;}
+    if(!sn){setStatus('Masukkan SN ONT yang ingin dicari.',true);snInput.focus();return;}
+    const current=++generation;
+    clearResult();
+    findButton.disabled=true;
+    findButton.innerHTML='<span class="spinner-border spinner-border-sm me-2"></span>Mencari SN di OLT...';
+    setStatus('Membaca registrasi OLT dan mencocokkan SN...',false);
+    try{
+      const response=await fetch('/tech/provisioning/delete-sn/lookup',{
+        method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json','X-Requested-With':'XMLHttpRequest'},
+        credentials:'same-origin',cache:'no-store',body:JSON.stringify({oltId,sn})
+      });
+      const data=await response.json();
+      if(current!==generation)return;
+      if(!response.ok||!data.success)throw new Error(data.message||'SN tidak ditemukan.');
+      found={oltId:String(data.olt.id),oltName:data.olt.name,pon:Number(data.onu.pon),onuId:Number(data.onu.onuId),sn:String(data.onu.sn).toUpperCase()};
+      const linkedCustomer=data.customer;
+      document.getElementById('foundCustomer').textContent=linkedCustomer
+        ? linkedCustomer.name+' — PPPoE: '+(linkedCustomer.pppoeUsername||'-')+' — ID '+linkedCustomer.id
+        : (Number(data.customerMatches||0)>1?'Lebih dari satu pasangan pelanggan; periksa data SN pelanggan.':'Belum ada pasangan pelanggan tersimpan');
+      document.getElementById('foundOltName').textContent=found.oltName||'-';
+      document.getElementById('foundPon').textContent=String(found.pon);
+      document.getElementById('foundOnuId').textContent=String(found.onuId);
+      document.getElementById('foundSn').textContent=found.sn;
+      resultEl.hidden=false;
+      setStatus('SN cocok dengan satu ONT terdaftar. Periksa lokasi dan SN sebelum menghapus.',false);
+    }catch(error){
+      if(current===generation)setStatus(error.message||'Gagal mencari SN di OLT.',true);
+    }finally{
+      if(current===generation){findButton.disabled=false;findButton.innerHTML='<i class="bi bi-search me-1"></i>Cari SN di OLT';}
+    }
+  }
+
+  async function removeFound(){
+    if(!found)return;
+    const target={...found};
+    if(!confirm('Anda akan menghapus registrasi ONT langsung dari OLT.\n\nSN: '+target.sn+'\nOLT: '+target.oltName+'\nPON / ONU: '+target.pon+' / '+target.onuId+'\n\nJika masih dipakai pelanggan, koneksi bisa terputus. Data pelanggan billing tidak dihapus. Lanjutkan?'))return;
+    const typed=prompt('Ketik ulang SN untuk mengonfirmasi penghapusan:\n'+target.sn);
+    if(typed===null)return;
+    if(typed.trim().toUpperCase()!==target.sn){alert('SN tidak cocok. Tidak ada perubahan dilakukan.');return;}
+    deleteButton.disabled=true;
+    deleteButton.innerHTML='<span class="spinner-border spinner-border-sm me-2"></span>Menghapus dan memverifikasi...';
+    try{
+      const response=await fetch('/tech/provisioning/delete-sn',{
+        method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json','X-Requested-With':'XMLHttpRequest'},
+        credentials:'same-origin',cache:'no-store',
+        body:JSON.stringify({oltId:target.oltId,pon:target.pon,onuId:target.onuId,sn:target.sn,confirmationSn:typed.trim().toUpperCase()})
+      });
+      const data=await response.json();
+      if(!response.ok||!data.success)throw new Error(data.message||'Penghapusan gagal.');
+      clearResult();
+      snInput.value='';
+      setStatus(data.message||'SN berhasil dihapus dari OLT.',false);
+      alert(data.message||'SN berhasil dihapus dari OLT.');
+      snInput.focus();
+    }catch(error){
+      setStatus(error.message||'Penghapusan gagal. Cari SN ulang untuk memeriksa kondisi terbaru.',true);
+      clearResult();
+    }finally{
+      deleteButton.disabled=false;
+      deleteButton.innerHTML='<i class="bi bi-trash3 me-1"></i>Hapus SN dari OLT';
+    }
+  }
+
+  findButton.addEventListener('click',lookup);
+  customerSearch.addEventListener('focus',showCustomerResults);
+  customerSearch.addEventListener('input',()=>{
+    const selected=customerSelect.options[customerSelect.selectedIndex];
+    if(selected&&selected.value&&customerSearch.value.trim()!==customerDisplay(selected)){
+      customerSelect.value='';customerSelected.hidden=true;snInput.value='';clearResult();
+    }
+    showCustomerResults();
+  });
+  customerSearch.addEventListener('keydown',event=>{
+    if(event.key==='Escape'){hideCustomerResults();return;}
+    if(event.key==='Enter'&&!customerResults.hidden){
+      const first=customerResults.querySelector('button[role="option"]');
+      if(first){event.preventDefault();first.click();}
+    }
+  });
+  document.addEventListener('click',event=>{
+    const picker=document.getElementById('deleteSnCustomerPicker');
+    if(picker&&!picker.contains(event.target))hideCustomerResults();
+  });
+  clearCustomerButton.addEventListener('click',clearCustomerSelection);
+  snInput.addEventListener('input',clearResult);
+  snInput.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();lookup();}});
+  oltSelect.addEventListener('change',()=>{generation++;clearResult();setStatus('OLT berubah. Masukkan SN lalu cari kembali.',false);});
+  deleteButton.addEventListener('click',removeFound);
+})();
+</script>
+<%- include('partials/bottom_nav') %>

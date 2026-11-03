@@ -1,0 +1,819 @@
+<%- include('partials/header') %>
+
+<style>
+  /* Pencarian pelanggan: latar putih, teks gelap, tombol biru besar */
+  .provision-job[hidden] { display:none!important; }
+  .provision-profile-form { background:#f8fafc; border:1px solid #dbe5f2; border-radius:12px; padding:12px; }
+  .provision-profile-form label { color:#475569; font-size:12px; }
+  .provision-profile-form input, .provision-profile-form textarea { background:#fff!important; color:#111827!important; }
+  .provision-action-row { display:flex; gap:8px; }
+  .provision-action-row > * { flex:1; }
+  .btn-cancel-job { color:#b91c1c!important; border-color:#fecaca!important; background:#fff!important; }
+  .provision-detect-panel { background:#fff!important; color:#111827!important; border-color:#dbe5f2!important; }
+  .provision-detect-panel .text-dark, .provision-detect-panel .fw-semibold { color:#111827!important; }
+  .provision-detect-panel .text-secondary { color:#52637a!important; }
+  .provision-detect-panel input { background:#fff!important; color:#111827!important; border-color:#cbd5e1!important; }
+  .provision-detect-panel .js-discover-result { color:#1f2937; }
+  .provision-detect-panel .js-discover-result button.active { background:#dbeafe!important; color:#174da0!important; border-color:#93baf3!important; }
+  .provision-detect-panel .js-discover-onu, .js-provision-submit { background:#064db7!important; border-color:#064db7!important; color:#fff!important; font-weight:700; }
+  .provision-detect-panel .js-discover-onu:hover, .js-provision-submit:hover { background:#043f98!important; border-color:#043f98!important; }
+  .provision-detect-panel .js-discover-onu:disabled, .js-provision-submit:disabled { background:#94a3b8!important; border-color:#94a3b8!important; color:#fff!important; opacity:1; }
+
+  .provision-live-modal[hidden]{display:none!important}
+  .provision-live-modal.is-blocking{touch-action:none;user-select:none}
+  .provision-live-modal.is-blocking .provision-live-card{pointer-events:auto}
+  .provision-live-modal.is-blocking .js-close-provision-modal{display:none!important}
+  .provision-live-modal{position:fixed;inset:0;z-index:2050;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(8,18,38,.72);backdrop-filter:blur(5px)}
+  .provision-live-card{width:min(100%,390px);background:#fff;border-radius:24px;padding:26px 22px;text-align:center;box-shadow:0 24px 80px rgba(0,0,0,.3);color:#0f172a}
+  .provision-orbit{width:104px;height:104px;border-radius:50%;margin:2px auto 18px;display:grid;place-items:center;position:relative;background:conic-gradient(from 0deg,#0d6efd 0 70%,#dbeafe 70% 100%);animation:provision-spin 1.25s linear infinite}
+  .provision-orbit:before{content:"";position:absolute;inset:7px;border-radius:50%;background:#fff}
+  .provision-orbit-core{position:relative;z-index:1;font-size:29px;color:#0755c9;animation:provision-spin 1.25s linear infinite reverse}
+  .provision-live-label{display:inline-flex;align-items:center;gap:7px;border-radius:999px;background:#dbeafe;color:#174da0;padding:7px 13px;font-size:12px;font-weight:800;letter-spacing:1.3px;margin-bottom:10px}
+  .provision-live-dot{width:7px;height:7px;border-radius:50%;background:#2563eb;animation:provision-pulse 1s ease-in-out infinite}
+  .provision-live-card .js-progress-message{min-height:42px;line-height:1.45;color:#475569!important;overflow-wrap:anywhere}
+  .provision-live-card .progress{height:9px;border-radius:99px;background:#e8eef7;overflow:hidden}
+  .provision-live-card .progress-bar{border-radius:99px}
+  @keyframes provision-spin{to{transform:rotate(360deg)}}
+  @keyframes provision-pulse{50%{opacity:.25;transform:scale(.75)}}
+  @media(prefers-reduced-motion:reduce){.provision-orbit,.provision-orbit-core,.provision-live-dot{animation-duration:3s}}
+  @media(max-width:380px){.provision-search{gap:6px;padding:7px}.provision-search input{font-size:14px}.provision-search button{min-width:70px;padding:0 12px}}
+</style>
+<div class="d-flex flex-column flex-sm-row justify-content-end align-items-stretch align-items-sm-center gap-3 mb-3">
+  <div class="d-grid d-sm-flex gap-2 flex-shrink-0">
+    <a href="/tech/provisioning/import" class="btn btn-outline-success btn-sm rounded-3 text-nowrap"><i class="bi bi-person-lines-fill me-1"></i>Migrasi Pelanggan</a>
+    <a href="/tech/customers/new" class="btn btn-outline-primary btn-sm rounded-3 text-nowrap"><i class="bi bi-person-plus me-1"></i>Tambah Pelanggan</a>
+    <a href="/tech/provisioning/delete-sn" class="btn btn-outline-danger btn-sm rounded-3 text-nowrap"><i class="bi bi-trash3 me-1"></i>Hapus SN ONT</a>
+  </div>
+</div>
+
+<% if (msg) { %>
+  <div class="alert alert-<%= msg.type === 'error' ? 'danger' : 'success' %> rounded-4"><%= msg.text %></div>
+<% } %>
+
+<% if (!jobs || jobs.length === 0) { %>
+  <div class="t-card text-center py-4">
+    <i class="bi bi-inbox text-primary fs-2"></i>
+    <div class="fw-bold mt-2">Tidak ada tugas aktivasi yang menunggu</div>
+    <div class="text-secondary small mt-1">Tambahkan pelanggan baru atau pilih data pelanggan lama untuk memulai proses aktivasi.</div>
+  </div>
+<% } %>
+
+<% (jobs || []).forEach(j => { %>
+  <div class="t-card mb-3 provision-job" data-customer-id="<%= j.id %>" data-job-status="<%= j.job_status || '' %>" data-search="<%= [j.id,j.name,j.phone,j.pppoe_username,j.package_name,j.olt_name,j.odp_name,j.onu_sn].filter(Boolean).join(' ').toLowerCase() %>">
+    <div class="d-flex justify-content-between gap-2 align-items-start">
+      <div>
+        <div class="fw-bold"><%= j.name %></div>
+        <div class="text-secondary small"><i class="bi bi-telephone me-1"></i><%= j.phone || 'Nomor telepon belum diisi' %></div>
+      </div>
+      <span class="badge text-bg-<%= j.job_status === 'failed' ? 'danger' : (j.job_status === 'working' ? 'warning' : (j.job_status === 'bound_manual' ? 'warning' : (j.job_status === 'done' ? 'success' : 'secondary'))) %>"><%= j.job_status === 'failed' ? 'Gagal — perlu cek' : (j.job_status === 'working' ? 'Sedang diproses' : (j.job_status === 'bound_manual' ? 'Binding berhasil · PPPoE manual' : (j.job_status === 'done' ? 'Aktif' : 'Menunggu'))) %></span>
+    </div>
+    <div class="row g-2 small mt-2">
+      <div class="col-6"><span class="text-secondary">ODP</span><div class="fw-semibold"><%= j.odp_name || '-' %></div></div>
+      <div class="col-6"><span class="text-secondary">Paket</span><div class="fw-semibold"><%= j.package_name || '-' %></div></div>
+      <div class="col-6"><span class="text-secondary">PPPoE</span><div class="fw-semibold"><%= j.pppoe_username || 'Belum diatur' %></div></div>
+      <div class="col-6"><span class="text-secondary">OLT</span><div class="fw-semibold"><%= j.olt_name || 'Belum dipilih' %></div></div>
+    </div>
+    <% if (j.last_message) { %><div class="small mt-2 text-secondary js-provision-job-message" data-job-status="<%= j.job_status || '' %>"><%= j.last_message %></div><% } %>
+    <button type="button" class="btn btn-outline-info btn-sm w-100 mt-2 js-diagnose-wan" data-customer-id="<%= j.id %>"><i class="bi bi-activity me-1"></i>Periksa Akun PPPoE</button>
+    <div class="small mt-2 js-wan-diagnosis" role="status" aria-live="polite" hidden></div>
+    <details class="mt-3">
+      <summary class="btn btn-outline-primary btn-sm rounded-3"><i class="bi bi-geo-alt-fill me-1"></i>Edit ODP &amp; Titik Pelanggan</summary>
+      <form method="POST" action="/tech/provisioning/<%= j.id %>/odp" class="provision-profile-form mt-2">
+        <label class="form-label">OLT <span class="text-danger">*</span></label>
+        <select name="olt_id" class="form-select form-select-sm mb-2 js-customer-olt" required>
+          <option value="">Pilih OLT</option>
+          <% (olts || []).forEach(o => { %><option value="<%= o.id %>" <%= Number(j.olt_id) === Number(o.id) ? 'selected' : '' %>><%= o.name %></option><% }) %>
+        </select>
+        <label class="form-label">ODP <span class="text-danger">*</span></label>
+        <select name="odp_id" class="form-select form-select-sm mb-2 js-customer-odp" required>
+          <option value="">Pilih ODP</option>
+          <% (odps || []).forEach(o => { %><option value="<%= o.id %>" data-olt-id="<%= o.olt_id || '' %>" data-lat="<%= o.lat == null ? '' : o.lat %>" data-lng="<%= o.lng == null ? '' : o.lng %>" data-base-label="<%= o.name %>" <%= Number(j.odp_id) === Number(o.id) ? 'selected' : '' %>><%= o.name %></option><% }) %>
+        </select>
+        <div class="form-text js-customer-odp-distance mb-2" role="status" aria-live="polite">Jarak pelanggan ke ODP maksimal 200 meter. Jika lebih jauh, pilih ODP lain yang lebih dekat.</div>
+        <label class="form-label">Port pelanggan pada ODP <span class="text-danger">*</span></label>
+        <input name="pon_port" type="number" inputmode="numeric" min="1" max="128" class="form-control form-control-sm mb-2" required value="<%= j.pon_port || '' %>" placeholder="Nomor port 1–128">
+        <label class="form-label">Latitude titik pelanggan</label>
+        <input name="lat" type="number" step="any" min="-90" max="90" class="form-control form-control-sm mb-2" value="<%= j.lat || '' %>" placeholder="Contoh: -8.0885">
+        <label class="form-label">Longitude titik pelanggan</label>
+        <input name="lng" type="number" step="any" min="-180" max="180" class="form-control form-control-sm mb-2" value="<%= j.lng || '' %>" placeholder="Contoh: 112.2893">
+        <button type="button" class="btn btn-outline-primary btn-sm w-100 mb-2 js-get-customer-point"><i class="bi bi-crosshair me-1"></i>Ambil Lokasi GPS</button>
+        <button type="submit" class="btn btn-primary btn-sm w-100" onclick="return confirm('Simpan OLT, ODP, port, dan titik pelanggan?')">Simpan Data Jaringan</button>
+      </form>
+    </details>
+    <hr>
+    <form method="POST" action="/tech/provisioning/<%= j.id %>" class="js-auto-activation-form">
+      <input type="hidden" name="pon" value="<%= j.pon_id || '' %>">
+      <input type="hidden" name="onu_id" value="<%= j.onu_id || '' %>">
+      <input type="hidden" name="line_profile" value="1">
+      <input type="hidden" name="srv_profile" value="0">
+      <div class="rounded-4 border p-3 bg-white text-dark provision-detect-panel">
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <i class="bi bi-magic text-success fs-5"></i>
+          <div class="fw-semibold text-dark">Aktivasi Otomatis dari SN</div>
+        </div>
+        <label class="form-label small text-secondary mt-3 mb-1">Pilih OLT untuk pemindaian</label>
+        <select name="scan_olt_id" class="form-select rounded-3 mb-2 js-scan-olt" required>
+          <option value="">Pilih OLT HSGQ</option>
+          <% (olts || []).filter(o => String(o.brand || '').toUpperCase() === 'HSGQ' && Number(o.is_active) === 1).forEach(o => { %>
+            <option value="<%= o.id %>" <%= Number(j.olt_id) === Number(o.id) ? 'selected' : '' %>><%= o.name %> — <%= o.host %></option>
+          <% }) %>
+        </select>
+        <label class="form-label small text-secondary mt-3 mb-1" for="provisionVendor-<%= j.id %>">Vendor ONT</label>
+        <select id="provisionVendor-<%= j.id %>" name="onu_vendor" class="form-select rounded-3 mb-2 js-provision-vendor" required>
+          <option value="">Pilih vendor ONT</option>
+          <option value="FIBERHOME">FiberHome</option>
+          <option value="ZTE">ZTE</option>
+          <option value="HUAWEI">Huawei</option>
+          <option value="NOKIA">Nokia / Alcatel</option>
+          <option value="CMHI">CMHI</option>
+          <option value="ZXIC">ZXIC</option>
+          <option value="ZIONCOM">ZIONCOM / TOTOLINK</option>
+          <option value="RTEG">RTEG</option>
+          <option value="ZICG">ZICG</option>
+          <option value="CMDC">CMDC</option>
+          <option value="OTHER">Lainnya</option>
+        </select>
+        <label class="form-label small text-secondary mb-1" for="provisionSn-<%= j.id %>">Nomor seri ONT (SN)</label>
+        <input id="provisionSn-<%= j.id %>" name="onu_sn" required maxlength="16" minlength="12" pattern="[A-Za-z0-9-]{12,16}" autocomplete="off" autocapitalize="characters" spellcheck="false" class="form-control rounded-3 text-uppercase fw-semibold" value="" placeholder="Masukkan SN atau pilih hasil pencarian">
+        <button type="button" class="btn btn-primary w-100 rounded-3 mt-2 js-discover-onu" <%= j.job_status === 'bound_manual' ? 'disabled' : '' %>><i class="bi bi-search me-2"></i>Baca SN dari OLT</button>
+        <select class="form-select rounded-3 mt-2 js-discovered-sn" aria-label="SN ONT yang terdeteksi di OLT" hidden><option value="">Pilih SN yang terdeteksi…</option></select>
+        <div class="small text-secondary mt-2 js-sn-help">Pilih vendor dan baca SN dari OLT.</div>
+        <div class="small text-secondary mt-1 js-auto-location" role="status" aria-live="polite">SN dan nomor ONU akan diperiksa dari OLT sebelum aktivasi.</div>
+        <div class="small mt-2 js-discover-result" role="status" aria-live="polite"></div>
+        <div class="mt-3 p-3 rounded-3 border js-provision-progress" role="status" aria-live="polite" hidden>
+          <div class="d-flex align-items-center gap-2 fw-semibold js-progress-heading"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span>Proses aktivasi sedang berjalan</div>
+          <div class="small text-secondary mt-2 js-progress-message">Menyiapkan proses...</div>
+          <div class="progress mt-2" style="height:8px"><div class="progress-bar progress-bar-striped progress-bar-animated js-progress-bar" role="progressbar" style="width:2%" aria-valuenow="2" aria-valuemin="0" aria-valuemax="100"></div></div>
+          <div class="d-flex justify-content-between small text-secondary mt-2"><span>Waktu berjalan</span><strong class="js-progress-elapsed">00:00</strong></div>
+          <div class="small text-secondary mt-2">Proses binding dapat berlangsung hingga 10 menit. Jika PPPoE otomatis gagal, konfigurasi PPPoE dapat dilanjutkan secara manual tanpa mengulang binding.</div>
+        </div>
+      </div>
+      <% if (j.job_status === 'bound_manual') { %>
+        <button type="button" class="btn btn-warning w-100 rounded-3 mt-3" disabled><i class="bi bi-check-circle me-2"></i>Binding selesai</button>
+        <div class="small text-secondary mt-2">Binding selesai, tetapi koneksi PPPoE belum aktif. Periksa konfigurasi PPPoE pada ONT. Menutup tugas ini tidak menghapus data pelanggan atau binding OLT.</div>
+        <button type="submit" formmethod="POST" formaction="/tech/provisioning/<%= j.id %>/ack-manual" class="btn btn-success w-100 rounded-3 mt-2" onclick="return confirm('Binding ONU sudah selesai, tetapi PPPoE belum aktif. Hapus tugas ini dan lanjutkan konfigurasi PPPoE pada ONT? Data pelanggan dan binding OLT tidak dihapus.');"><i class="bi bi-check-circle me-2"></i>Tutup Tugas</button>
+      <% } else { %>
+        <button type="submit" class="btn btn-primary w-100 rounded-3 mt-3 js-provision-submit" data-location-ready="<%= (j.olt_id && j.odp_id && j.pon_port) ? '1' : '0' %>" <%= (j.olt_id && j.odp_id && j.pon_port && j.onu_sn) ? '' : 'disabled' %>><i class="bi bi-lightning-charge me-2"></i>Proses Aktivasi</button>
+      <% } %>
+    </form>
+    <form method="POST" action="/tech/provisioning/<%= j.id %>/cancel" class="mt-2" onsubmit="return confirm('Batalkan tugas ini? Data pelanggan tidak akan dihapus.');">
+      <button type="submit" class="btn btn-outline-danger btn-cancel-job w-100 rounded-3"><i class="bi bi-x-circle me-1"></i>Tidak Jadi / Batalkan Tugas</button>
+    </form>
+  </div>
+<% }) %>
+
+
+<div class="provision-live-modal" id="provisionLiveModal" role="dialog" aria-modal="true" aria-labelledby="provisionLiveTitle" aria-describedby="provisionLiveMessage" hidden>
+  <div class="provision-live-card">
+    <div class="provision-orbit" aria-hidden="true"><div class="provision-orbit-core"><i class="bi bi-link-45deg"></i></div></div>
+    <div class="provision-live-label"><span class="provision-live-dot"></span><span class="js-progress-heading" id="provisionLiveTitle">PROSES AKTIVASI</span></div>
+    <h5 class="fw-bold mb-2">Mohon tunggu hingga proses selesai.</h5>
+    <div class="js-progress-message small mb-3" id="provisionLiveMessage">Menghubungkan SN ONU ke OLT...</div>
+    <div class="progress mb-2"><div class="progress-bar progress-bar-striped progress-bar-animated js-progress-bar" role="progressbar" style="width:3%" aria-valuenow="3" aria-valuemin="0" aria-valuemax="100"></div></div>
+    <div class="d-flex justify-content-between align-items-center small text-secondary mt-3"><span><i class="bi bi-clock me-1"></i>Waktu berjalan</span><strong class="js-progress-elapsed fs-6">00:00</strong></div>
+    <div class="small text-secondary mt-3">Proses dapat berlangsung hingga 10 menit. Jika PPPoE otomatis gagal, lanjutkan konfigurasi secara manual tanpa mengulang binding.</div>
+    <button type="button" class="btn btn-outline-secondary btn-sm mt-3 js-close-provision-modal" hidden>Tutup</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  function simpleProvisionMessage(raw, status) {
+    const message = String(raw || '').trim();
+    const state = String(status || '').toLowerCase();
+    if (state === 'done' || /^DONE:|ONU BINDING \+ INTERNET AKTIF/i.test(message)) {
+      return 'ONT terdaftar dan koneksi internet sudah aktif.';
+    }
+    if (/pemeriksaan firmware otomatis belum berhasil|firmware.*upgrade berjalan|upgrade gagal|upgrade dibatalkan|upgrade melebihi .*menit|firmware.*dijadwalkan ulang|menunggu upgrade firmware|hasil perintah upgrade belum dapat dipastikan|WAN ditahan karena proses firmware gagal/i.test(message)) {
+      return 'ONT sudah terdaftar, tetapi pemeriksaan atau pembaruan firmware belum selesai. Jangan ulangi binding; hubungi admin jaringan.';
+    }
+    if (state === 'bound_manual' || /WAN_MANUAL|WAN_OLT_MANUAL|PPPoE\/INTERNET GAGAL|WAN belum aktif/i.test(message)) {
+      return 'ONT sudah terdaftar, tetapi internet belum aktif. Jangan ulangi binding. Periksa akun PPPoE dan konfigurasi WAN pada ONT/OLT.';
+    }
+    if (/SN tidak ditemukan|GAGAL BINDING|autofind OLT|ONT belum terdeteksi/i.test(message)) {
+      return 'ONT belum terdeteksi di OLT. Pastikan SN sesuai label, ONT menyala, dan kabel fiber terpasang.';
+    }
+    if (/pra-validasi WAN gagal|WAN_OLT_UNSUPPORTED|aktivasi otomatis.*belum didukung|vendor.*belum didukung/i.test(message)) {
+      return 'Aktivasi otomatis untuk ONT ini belum didukung oleh OLT yang dipilih. ONT belum diubah. Hubungi admin jaringan.';
+    }
+    if (/data WAN belum lengkap|router MikroTik aktif|username PPPoE|password PPPoE|paket billing.*belum dipilih|profile secret|rate-limit profile/i.test(message)) {
+      return 'Data layanan belum lengkap. Periksa router MikroTik, paket layanan, username PPPoE, dan password PPPoE pada data pelanggan.';
+    }
+    if (/serial number ONU tidak valid|SN ONU harus|nomor seri.*tidak valid/i.test(message)) {
+      return 'Periksa kembali SN pada label ONT dan pilih atau masukkan nomor seri yang benar.';
+    }
+    if (/HTTP \d+|respons awal bukan JSON|respons status bukan JSON|gagal membaca status aktivasi|server menolak permintaan/i.test(message)) {
+      return 'Koneksi ke server terputus saat memeriksa proses. Muat ulang halaman untuk melihat status terakhir. Jangan ulangi binding jika ONT sudah terdaftar.';
+    }
+    if (/firmware.{0,100}(gagal|belum selesai|dijadwalkan otomatis|sedang diperbarui|menunggu upgrade|pending|failed)|(gagal|belum selesai|dijadwalkan otomatis|sedang diperbarui|menunggu upgrade|pending|failed).{0,100}firmware/i.test(message)) {
+      return 'ONT sudah terdaftar, tetapi pemeriksaan atau pembaruan firmware belum selesai. Jangan ulangi binding; hubungi admin jaringan.';
+    }
+    if (/TAHAP 1\/2|PROSES BINDING|mencari SN ONU|SN cocok/i.test(message)) {
+      return 'Sedang mendaftarkan ONT ke OLT. Pastikan ONT menyala dan kabel fiber terpasang.';
+    }
+    if (/TAHAP 2\/2|WAN_PENDING|WAN\/PPPoE|PPPoE belum|ACS|internet belum aktif/i.test(message)) {
+      return 'ONT sudah terdaftar. Sistem sedang menyiapkan PPPoE dan memeriksa koneksi internet.';
+    }
+    if (/Sesi teknisi|login kembali|TECH_SESSION_EXPIRED/i.test(message)) {
+      return 'Sesi teknisi telah berakhir. Login kembali sebelum melanjutkan.';
+    }
+    if (/SNMP|Telnet|running-config|OID ONU|timeout|koneksi ke OLT/i.test(message)) {
+      return 'Status OLT belum dapat dipastikan. Periksa koneksi OLT atau hubungi admin jaringan.';
+    }
+    if (state === 'failed') {
+      return 'Aktivasi belum berhasil. Periksa SN, daya ONT, konektor fiber, dan koneksi OLT. Jika ONT sudah terdaftar, jangan ulangi binding sebelum status OLT diperiksa.';
+    }
+    return message.length > 230
+      ? 'Proses belum selesai. Periksa status ONT dan koneksi internet, lalu hubungi admin jaringan jika perlu.'
+      : message;
+  }
+  document.querySelectorAll('.js-provision-job-message').forEach(function (element) {
+    element.textContent = simpleProvisionMessage(element.textContent, element.dataset.jobStatus);
+  });
+  // Popup proses hanya boleh ditutup setelah proses selesai/gagal atau pemeriksaan terputus.
+  document.querySelectorAll('.js-close-provision-modal').forEach(function (button) { button.addEventListener('click', function () { const modal = document.getElementById('provisionLiveModal'); if (modal && button.hidden === false) { modal.hidden = true; modal.classList.remove('is-blocking'); document.body.style.overflow = ''; } }); });
+  document.addEventListener('keydown', function (event) { const modal = document.getElementById('provisionLiveModal'); if (modal && !modal.hidden && modal.classList.contains('is-blocking') && (event.key === 'Escape' || event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); event.stopImmediatePropagation(); } }, true);
+  document.addEventListener('click', function (event) { const modal = document.getElementById('provisionLiveModal'); if (modal && !modal.hidden && modal.classList.contains('is-blocking') && !modal.contains(event.target)) { event.preventDefault(); event.stopImmediatePropagation(); } }, true);
+
+  document.querySelectorAll('.js-diagnose-wan').forEach(function (button) {
+    button.addEventListener('click', async function () {
+      const customerId = button.dataset.customerId;
+      const card = button.closest('.provision-job');
+      const output = card && card.querySelector('.js-wan-diagnosis');
+      if (!output) return;
+      button.disabled = true;
+      output.hidden = false;
+      output.textContent = 'Memeriksa data Billing dan membaca status PPPoE langsung dari MikroTik...';
+      try {
+        const response = await fetch('/tech/provisioning/' + encodeURIComponent(customerId) + '/diagnose-wan', { headers: { 'Accept': 'application/json' } });
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error(data.message || 'Pemeriksaan gagal.');
+        const b = data.result.billing || {};
+        const m = data.result.mikrotik || {};
+        const rows = [
+          'Billing: ' + (b.customerFound ? 'terbaca' : 'tidak ditemukan'),
+          'Paket: ' + (b.package || 'belum dipilih'),
+          'Username PPPoE: ' + (b.pppoeUsernamePresent ? 'ada' : 'belum diisi'),
+          'Password di Billing: ' + (b.pppoePasswordPresent ? 'ada' : 'kosong (akan dicek dari secret MikroTik)'),
+          'Router: ' + (m.routerName || (m.connected ? 'terhubung' : 'belum terhubung')),
+          'Username PPPoE: ' + (m.secretExists ? (m.secretEnabled ? 'tersedia dan aktif' : 'tersedia tetapi dinonaktifkan') : 'tidak ditemukan'),
+          'Profile secret: ' + (m.secretProfile || '-'),
+          'Sesi PPPoE: ' + (m.activeSession ? 'AKTIF' + (m.activeIp ? ' · IP ' + m.activeIp : '') + (m.activeUptime ? ' · uptime ' + m.activeUptime : '') : 'belum aktif'),
+          'Hasil: ' + (m.message || 'selesai')
+        ];
+        output.textContent = rows.join(' | ');
+        output.className = 'small mt-2 js-wan-diagnosis ' + (m.connected && m.secretExists && m.activeSession ? 'text-success' : 'text-danger');
+      } catch (error) {
+        output.textContent = error.message || 'Diagnostik gagal. Coba kembali.';
+        output.className = 'small mt-2 js-wan-diagnosis text-danger';
+      } finally { button.disabled = false; }
+    });
+  });
+
+  document.querySelectorAll('.js-auto-activation-form').forEach(function (form) {
+    const snInput = form.querySelector('[name="onu_sn"]');
+    const button = form.querySelector('.js-provision-submit');
+    const locationReady = button && button.dataset.locationReady === '1';
+    const vendorInput = form.querySelector('[name="onu_vendor"]');
+    const snHelp = form.querySelector('.js-sn-help');
+    if (vendorInput && snHelp) {
+      const vendorHints = {
+        FIBERHOME: 'FiberHome: gunakan SN pada label perangkat.',
+        ZTE: 'ZTE: gunakan SN pada label perangkat.',
+        HUAWEI: 'Huawei: gunakan SN pada label perangkat.',
+        NOKIA: 'Nokia/Alcatel: gunakan SN pada label perangkat.',
+        CMHI: 'CMHI: gunakan SN pada label perangkat.',
+        ZXIC: 'ZXIC: gunakan SN pada label perangkat.',
+        ZIONCOM: 'ZIONCOM: gunakan SN pada label perangkat.',
+        RTEG: 'RTEG: gunakan SN pada label perangkat.',
+        ZICG: 'ZICG: gunakan SN pada label perangkat.',
+        CMDC: 'CMDC: gunakan SN pada label perangkat.'
+      };
+      const updateVendorHelp = function () {
+        const hint = vendorHints[vendorInput.value] || '';
+        snHelp.textContent = hint;
+        snHelp.hidden = !hint;
+      };
+      vendorInput.addEventListener('change', updateVendorHelp);
+      updateVendorHelp();
+    }
+    if (snInput && button) {
+      const ponInput = form.querySelector('[name="pon"]');
+      const idInput = form.querySelector('[name="onu_id"]');
+      const updateReady = function () {
+        const serialValid = /^[A-Za-z0-9-]{12,16}$/.test(snInput.value.trim());
+        const slotVerified = Boolean(ponInput && ponInput.value && idInput && idInput.value && snInput.dataset.scanSelected === '1');
+        button.disabled = !(locationReady && serialValid && slotVerified);
+      };
+      const onManualSerialChange = function () {
+        snInput.setCustomValidity('');
+        if (snInput.dataset.scanSelected !== '1') {
+          if (ponInput) ponInput.value = '';
+          if (idInput) idInput.value = '';
+        }
+        updateReady();
+      };
+      snInput.addEventListener('input', onManualSerialChange);
+      snInput.addEventListener('change', onManualSerialChange);
+      updateReady();
+    }
+    form.addEventListener('submit', async function (event) {
+      if (!button || button.disabled) return;
+      event.preventDefault();
+      const sn = snInput ? snInput.value.trim() : '';
+      if (!/^[A-Za-z0-9-]{12,16}$/.test(sn)) { if (snInput) snInput.reportValidity(); return; }
+      if (!confirm('Mulai pendaftaran ONT dan aktivasi internet? Proses dapat memakan waktu hingga 10 menit. Jika ONT sudah terdaftar tetapi internet belum aktif, jangan ulangi binding.')) return;
+      const card = form.closest('.provision-job');
+      const progress = document.getElementById('provisionLiveModal');
+      const heading = progress && progress.querySelector('.js-progress-heading');
+      const message = progress && progress.querySelector('.js-progress-message');
+      const bar = progress && progress.querySelector('.js-progress-bar');
+      const elapsedLabels = document.querySelectorAll('.js-progress-elapsed');
+      const status = form.querySelector('.js-discover-result');
+      const cancelButton = card && card.querySelector('.btn-cancel-job');
+      const badge = card && card.querySelector('.badge');
+      const started = Date.now();
+      const maxWait = 10 * 60 * 1000;
+      let terminal = false;
+      button.disabled = true;
+      if (cancelButton) { cancelButton.disabled = true; cancelButton.dataset.lockedByProvisioning = '1'; }
+      button.setAttribute('aria-busy', 'true');
+      button.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Memproses... jangan ditutup';
+      if (snInput) snInput.readOnly = true;
+      if (progress) {
+        progress.hidden = false; progress.classList.add('is-blocking'); document.body.style.overflow = 'hidden';
+        progress.classList.remove('is-success', 'is-failed');
+        const closeModal = progress.querySelector('.js-close-provision-modal'); if (closeModal) closeModal.hidden = true;
+        if (bar) { bar.classList.remove('bg-success', 'bg-danger', 'bg-warning'); bar.classList.add('progress-bar-animated', 'progress-bar-striped'); bar.style.width = '3%'; bar.setAttribute('aria-valuenow', '3'); }
+        if (heading) heading.textContent = 'PROSES AKTIVASI';
+        if (message) message.textContent = 'Menghubungkan SN ONU ke OLT...';
+      }
+      if (status) status.textContent = 'Permintaan diterima. Menunggu konfirmasi status dari server...';
+      if (badge) { badge.className = 'badge text-bg-warning'; badge.textContent = 'Sedang diproses'; }
+      const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+      const updateElapsed = () => {
+        const seconds = Math.floor((Date.now() - started) / 1000);
+        const formatted = String(Math.floor(seconds / 60)).padStart(2, '0') + ':' + String(seconds % 60).padStart(2, '0');
+        elapsedLabels.forEach(label => { label.textContent = formatted; });
+      };
+      const setMessage = (text, percent) => {
+        if (message) message.textContent = text || 'Proses sedang berjalan...';
+        if (bar) { const value = Math.max(2, Math.min(99, percent)); bar.style.width = value + '%'; bar.setAttribute('aria-valuenow', String(value)); }
+        updateElapsed();
+      };
+      // Timer berjalan independen dari request jaringan, sehingga waktu tetap bergerak saat server lambat.
+      const elapsedTicker = setInterval(updateElapsed, 1000);
+      try {
+        // Route uses express.urlencoded(), so send URL-encoded form data, not multipart FormData.
+        // Multipart was not parsed by the route and caused req.body.onu_sn to be empty.
+        const payload = new URLSearchParams();
+        new FormData(form).forEach((value, key) => payload.append(key, String(value)));
+        payload.set('onu_sn', sn);
+        const response = await fetch(form.action, { method: 'POST', body: payload, headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' }, credentials: 'same-origin', cache: 'no-store' });
+        const kickoffText = await response.text();
+        let kickoff;
+        try { kickoff = JSON.parse(kickoffText); } catch (_) { throw new Error('Respons awal bukan JSON (HTTP ' + response.status + '). Muat ulang halaman dan login kembali.'); }
+        if (response.status === 401 || kickoff.code === 'TECH_SESSION_EXPIRED') throw new Error(kickoff.message || 'Sesi teknisi habis; login kembali.');
+        if (!response.ok || !kickoff.success) throw new Error(kickoff.message || ('Server menolak permintaan aktivasi (HTTP ' + response.status + ').'));
+        setMessage(kickoff.message, 3);
+        while (Date.now() - started < maxWait) {
+          await sleep(2000);
+          const elapsed = Date.now() - started;
+          setMessage(message ? message.textContent : 'Memeriksa status...', Math.min(95, 3 + elapsed / maxWait * 92));
+          let check, data;
+          try {
+            check = await fetch('/tech/provisioning/' + encodeURIComponent(kickoff.customerId) + '/status', { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin', cache: 'no-store' });
+            const bodyText = await check.text();
+            try { data = JSON.parse(bodyText); } catch (_) { throw new Error('Respons status bukan JSON (HTTP ' + check.status + ').'); }
+          } catch (pollError) {
+            if (pollError && /Sesi teknisi|TECH_SESSION_EXPIRED/.test(String(pollError.message))) throw pollError;
+            setMessage('Koneksi pemeriksaan sementara terganggu. Mencoba membaca status lagi; proses server tidak otomatis diulang.', Math.min(95, 3 + elapsed / maxWait * 92));
+            await sleep(3000);
+            continue;
+          }
+          if (check.status === 401 || data.code === 'TECH_SESSION_EXPIRED') throw new Error(data.message || 'Sesi teknisi habis; login kembali.');
+          if (check.status >= 500 || check.status === 429) {
+            setMessage('Server sedang sibuk (HTTP ' + check.status + '). Pemeriksaan status akan dicoba lagi otomatis.', Math.min(95, 3 + elapsed / maxWait * 92));
+            await sleep(3000);
+            continue;
+          }
+          if (!check.ok || !data.success) throw new Error(data.message || ('Gagal membaca status aktivasi (HTTP ' + check.status + ').'));
+          const job = data.job || {};
+          const liveMessage = simpleProvisionMessage(job.last_message || 'Proses sedang berjalan…', job.status);
+          setMessage(liveMessage, Math.min(95, 3 + elapsed / maxWait * 92));
+          if (heading && /PROSES AKTIVASI/i.test(liveMessage)) heading.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Proses aktivasi';
+          else if (heading && /PROSES INTERNET/i.test(liveMessage)) heading.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Mengaktifkan koneksi internet';
+          if (job.status === 'done') {
+            terminal = true;
+            const closeModal = progress && progress.querySelector('.js-close-provision-modal'); if (closeModal) closeModal.hidden = false; if (progress) progress.classList.remove('is-blocking');
+            if (heading) heading.innerHTML = '<span class="text-success">✓</span> AKTIVASI BERHASIL — INTERNET AKTIF';
+            if (progress) { progress.classList.add('is-success'); }
+            if (bar) { bar.style.width = '100%'; bar.classList.remove('progress-bar-animated'); bar.classList.add('bg-success'); bar.setAttribute('aria-valuenow', '100'); }
+            if (badge) { badge.className = 'badge text-bg-success'; badge.textContent = 'Aktif'; }
+            button.innerHTML = '<i class="bi bi-check-circle me-2"></i>Aktivasi Berhasil';
+            if (status) status.textContent = 'Nomor seri cocok, koneksi ACS dan PPPoE terverifikasi, sesi aktif, dan akses internet berhasil.';
+            if (message) message.textContent = 'Aktivasi berhasil dan koneksi internet telah terverifikasi.';
+            break;
+          }
+          if (job.status === 'bound_manual') {
+            terminal = true;
+            const closeModal = progress && progress.querySelector('.js-close-provision-modal'); if (closeModal) closeModal.hidden = false; if (progress) progress.classList.remove('is-blocking');
+            if (heading) heading.innerHTML = '<span class="text-success">✓</span> BINDING ONU BERHASIL';
+            if (progress) progress.classList.add('is-success');
+            if (bar) { bar.style.width = '100%'; bar.classList.remove('progress-bar-animated'); bar.classList.add('bg-warning'); bar.setAttribute('aria-valuenow', '100'); }
+            if (badge) { badge.className = 'badge text-bg-warning'; badge.textContent = 'Binding berhasil · PPPoE manual'; }
+            button.disabled = false; button.removeAttribute('aria-busy');
+            button.innerHTML = '<i class="bi bi-check-circle me-2"></i>Binding Selesai — PPPoE Manual';
+            if (snInput) snInput.readOnly = true;
+            if (status) status.textContent = simpleProvisionMessage(job.last_message || 'Binding berhasil. Konfigurasi PPPoE perlu dilengkapi secara manual.', job.status);
+            if (message) message.textContent = 'Binding berhasil. Sistem sedang menutup tugas otomatis; data pelanggan dan binding ONT tetap disimpan.';
+            // Once the backend confirms bound_manual, remove only the provisioning task.
+            // Customer records and the confirmed OLT binding/SN are intentionally preserved.
+            try {
+              const closeResponse = await fetch('/tech/provisioning/' + encodeURIComponent(kickoff.customerId) + '/ack-manual', {
+                method: 'POST',
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin',
+                cache: 'no-store'
+              });
+              let closeResult = {};
+              try { closeResult = await closeResponse.json(); } catch (_) {}
+              if (!closeResponse.ok || !closeResult.success) {
+                throw new Error(closeResult.message || ('HTTP ' + closeResponse.status));
+              }
+              if (message) message.textContent = 'Tugas berhasil ditutup otomatis. Data pelanggan dan binding ONT tetap tersimpan.';
+              window.setTimeout(function () { window.location.reload(); }, 600);
+            } catch (closeError) {
+              console.warn('[TECH PROVISIONING] auto-close bound_manual gagal:', closeError);
+              if (message) message.textContent = 'Binding berhasil, tetapi tugas belum berhasil ditutup otomatis. Muat ulang halaman lalu coba Tutup Tugas kembali.';
+              const closeModal = progress && progress.querySelector('.js-close-provision-modal');
+              if (closeModal) closeModal.hidden = false;
+              if (progress) progress.classList.remove('is-blocking');
+            }
+            break;
+          }
+          if (job.status === 'failed') {
+            terminal = true;
+            const closeModal = progress && progress.querySelector('.js-close-provision-modal'); if (closeModal) closeModal.hidden = false; if (progress) progress.classList.remove('is-blocking');
+            if (heading) heading.innerHTML = '<span class="text-danger">✕</span> Aktivasi belum berhasil';
+            if (progress) { progress.classList.add('is-failed'); }
+            if (bar) { bar.classList.remove('progress-bar-animated'); bar.classList.add('bg-danger'); }
+            if (badge) { badge.className = 'badge text-bg-danger'; badge.textContent = 'Gagal — perlu cek'; }
+            button.disabled = false;
+            button.removeAttribute('aria-busy');
+            button.innerHTML = '<i class="bi bi-arrow-clockwise me-2"></i>Coba Proses Lagi';
+            if (snInput) snInput.readOnly = false;
+            if (message) message.textContent = simpleProvisionMessage(job.last_message || 'Aktivasi belum berhasil.', job.status) + ' Periksa petunjuk di atas sebelum mencoba lagi.';
+            break;
+          }
+        }
+        clearInterval(elapsedTicker);
+        if (!terminal) {
+          const closeModal = progress && progress.querySelector('.js-close-provision-modal'); if (closeModal) closeModal.hidden = false; if (progress) progress.classList.remove('is-blocking');
+          if (heading) heading.textContent = 'Batas tunggu 10 menit tercapai';
+          setMessage('Batas tunggu halaman tercapai. Server mungkin masih menyelesaikan perintah; muat ulang untuk membaca status terakhir. Jangan ulangi binding sebelum status OLT diperiksa.', 100);
+          if (bar) { bar.classList.remove('progress-bar-animated'); bar.classList.add('bg-warning'); }
+          if (button) { button.disabled = false; button.removeAttribute('aria-busy'); button.innerHTML = '<i class="bi bi-arrow-clockwise me-2"></i>Periksa / Coba Lagi'; }
+          if (cancelButton) { cancelButton.disabled = false; delete cancelButton.dataset.lockedByProvisioning; }
+          if (snInput) snInput.readOnly = false;
+        }
+      } catch (error) {
+        clearInterval(elapsedTicker);
+        const closeModal = progress && progress.querySelector('.js-close-provision-modal'); if (closeModal) closeModal.hidden = false; if (progress) progress.classList.remove('is-blocking');
+        const detail = String(error && error.message || 'Terjadi kesalahan.');
+        const inputError = /serial number|nomor seri|SN ONU harus|ID pelanggan tidak valid|Pilih OLT|Pilih ODP|port pelanggan|profile tidak valid|profil tidak valid/i.test(detail);
+        const sessionError = /Sesi teknisi|login kembali|TECH_SESSION_EXPIRED/i.test(detail);
+        if (heading) heading.textContent = inputError ? 'Data aktivasi perlu diperbaiki' : (sessionError ? 'Sesi teknisi berakhir' : 'Koneksi pemeriksaan terputus');
+        setMessage(inputError ? simpleProvisionMessage(detail, 'failed') + ' Perbaiki data pada formulir; proses binding belum dimulai.' : (sessionError ? simpleProvisionMessage(detail, 'failed') : simpleProvisionMessage(detail, 'failed') + ' Muat ulang halaman untuk melihat status terbaru. Server mungkin masih menjalankan proses.'), 100);
+        if (bar) { bar.classList.remove('progress-bar-animated'); bar.classList.add(inputError ? 'bg-danger' : 'bg-warning'); }
+        if (inputError && progress) progress.classList.add('is-failed');
+        button.disabled = false;
+        if (cancelButton) { cancelButton.disabled = false; delete cancelButton.dataset.lockedByProvisioning; }
+        button.removeAttribute('aria-busy');
+        button.innerHTML = '<i class="bi bi-arrow-clockwise me-2"></i>' + (inputError ? 'Perbaiki Data dan Coba Lagi' : (sessionError ? 'Login Kembali' : 'Periksa Status Lagi'));
+        if (snInput) {
+          snInput.readOnly = false;
+          // Jangan simpan customValidity pada input: pesan lama dapat memblokir submit berikutnya
+          // walaupun SN sudah dipilih ulang dari hasil pemindaian.
+          snInput.setCustomValidity('');
+          if (/serial number|nomor seri|SN ONU harus/i.test(detail)) snInput.focus();
+        }
+      }
+    });
+  });
+
+  function inferProvisionVendor(serial) {
+    const prefix = String(serial || '').trim().toUpperCase().slice(0, 4);
+    const vendors = {
+      FHTT: 'FIBERHOME', ZTEG: 'ZTE', HWTC: 'HUAWEI', ALCL: 'NOKIA',
+      CMHI: 'CMHI', ZXIC: 'ZXIC', ZION: 'ZIONCOM', ZIONCOM: 'ZIONCOM',
+      RTEG: 'RTEG', ZICG: 'ZICG', CMDC: 'CMDC'
+    };
+    return vendors[prefix] || 'OTHER';
+  }
+
+  document.querySelectorAll('.js-discover-onu').forEach(function (button) {
+    button.addEventListener('click', async function () {
+      const form = button.closest('form');
+      const ponInput = form.querySelector('[name="pon"]');
+      const idInput = form.querySelector('[name="onu_id"]');
+      const snInput = form.querySelector('[name="onu_sn"]');
+      const vendorInput = form.querySelector('[name="onu_vendor"]');
+      const detectedSnSelect = form.querySelector('.js-discovered-sn');
+      const oltSelect = form.querySelector('[name="scan_olt_id"]');
+      const resultBox = form.querySelector('.js-discover-result');
+      const locationBox = form.querySelector('.js-auto-location');
+      const submitButton = form.querySelector('.js-provision-submit');
+      if (!oltSelect || !oltSelect.value) {
+        resultBox.textContent = 'Pilih OLT HSGQ terlebih dahulu.';
+        return;
+      }
+      button.disabled = true;
+      submitButton.disabled = true;
+      ponInput.value = '';
+      idInput.value = '';
+      const manuallyEnteredSn = String(snInput.value || '').trim().toUpperCase();
+      snInput.dataset.scanSelected = '0';
+      if (vendorInput) vendorInput.value = '';
+      if (detectedSnSelect) {
+        detectedSnSelect.replaceChildren();
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = 'Pilih SN yang terdeteksi…';
+        detectedSnSelect.appendChild(placeholder);
+        detectedSnSelect.hidden = true;
+      }
+      locationBox.textContent = 'Memindai SN ONT dan memeriksa port PON serta ONU ID...';
+      resultBox.textContent = 'Pemindaian PON sesuai jumlah port OLT yang dipilih sedang berlangsung. Mohon tunggu...';
+      try {
+        const customerIdMatch = String(form.action || '').match(/\/provisioning\/(\d+)/);
+        if (!customerIdMatch) throw new Error('ID pelanggan tidak ditemukan pada formulir.');
+        const response = await fetch('/tech/provisioning/discover?customerId=' + encodeURIComponent(customerIdMatch[1]) + '&oltId=' + encodeURIComponent(oltSelect.value), {
+          headers: { Accept: 'application/json' }, credentials: 'same-origin', cache: 'no-store'
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error(data.message || 'Pemindaian gagal.');
+        resultBox.replaceChildren();
+        const scanWarning = String(data.warning || '');
+        if (scanWarning) {
+          const warning = document.createElement('div');
+          warning.className = 'small text-warning-emphasis mb-2';
+          warning.textContent = scanWarning;
+          resultBox.appendChild(warning);
+        }
+        if (!data.found || data.found.length === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'text-warning-emphasis';
+          if (Array.isArray(data.alreadyRegistered) && data.alreadyRegistered.length) {
+            empty.textContent = 'ONT berikut sudah terdaftar di OLT. Jika internet belum aktif, pilih Perbaiki Layanan untuk memeriksa dan memperbaiki koneksi tanpa menghapus pendaftaran ONT.';
+            data.alreadyRegistered.forEach(function (item) {
+              if (!item.pon || !item.onuId || !item.sn) return;
+              const repairForm = document.createElement('form');
+              repairForm.method = 'POST';
+              repairForm.action = '/tech/provisioning/' + encodeURIComponent(customerIdMatch[1]) + '/repair';
+              repairForm.className = 'mt-2';
+              [['pon', item.pon], ['onu_id', item.onuId], ['onu_sn', item.sn]].forEach(function (pair) {
+                const input = document.createElement('input'); input.type = 'hidden'; input.name = pair[0]; input.value = String(pair[1]); repairForm.appendChild(input);
+              });
+              const repairButton = document.createElement('button');
+              repairButton.type = 'submit'; repairButton.className = 'btn btn-warning w-100';
+              repairButton.textContent = 'Perbaiki Layanan — PON ' + item.pon + ' / ONU ID ' + item.onuId + ' (' + item.sn + ')';
+              repairForm.onsubmit = function () { return confirm('Periksa dan lengkapi jalur layanan untuk ONU ' + item.sn + ' pada PON ' + item.pon + ' ID ' + item.onuId + '? Binding tidak dihapus.'); };
+              repairForm.appendChild(repairButton); resultBox.appendChild(repairForm);
+            });
+          } else {
+            empty.textContent = 'Tidak ditemukan ONU baru pada port PON 1–' + (Number(data.maxPon) || 8) + '. Periksa daya ONT, konektor fiber, dan koneksi OLT, lalu coba pindai kembali.';
+          }
+          resultBox.appendChild(empty);
+          locationBox.textContent = 'Nomor seri, port PON, dan ONU ID belum tersedia.';
+          return;
+        }
+        const heading = document.createElement('div');
+        heading.className = 'fw-semibold mb-2';
+        heading.textContent = data.found.length === 1 ? 'ONU ditemukan. Periksa nomor seri berikut:' : 'Pilih nomor seri ONU yang sesuai dengan perangkat di lapangan:';
+        resultBox.appendChild(heading);
+        function choose(onu) {
+          ponInput.value = String(onu.pon);
+          idInput.value = onu.suggestedOnuId ? String(onu.suggestedOnuId) : '';
+          snInput.value = onu.sn;
+          snInput.dataset.scanSelected = '1';
+          if (vendorInput) {
+            vendorInput.value = inferProvisionVendor(onu.sn);
+            vendorInput.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+          // Pemilihan hasil scan harus menghapus custom validity dari percobaan sebelumnya.
+          snInput.setCustomValidity('');
+          snInput.dispatchEvent(new Event('input', { bubbles: true }));
+          locationBox.textContent = 'PON ' + onu.pon + (onu.suggestedOnuId ? ' · ONU ID ' + onu.suggestedOnuId : ' · ONU ID belum dapat ditentukan otomatis');
+          const locationReady = submitButton.dataset.locationReady === '1';
+          submitButton.disabled = !(locationReady && onu.suggestedOnuId && onu.pon && onu.sn);
+          const note = document.createElement('div');
+          note.className = 'small text-secondary mt-2';
+          note.textContent = onu.idCheck || '';
+          const previous = resultBox.querySelector('.js-id-note');
+          if (previous) previous.remove();
+          note.classList.add('js-id-note');
+          resultBox.appendChild(note);
+          if (!onu.suggestedOnuId) {
+            note.className += ' text-warning-emphasis';
+            note.textContent += ' Aktivasi dinonaktifkan sementara agar tidak menggunakan ONU ID yang mungkin sudah terpakai.';
+          }
+        }
+        if (!detectedSnSelect) throw new Error('Kolom pemilihan SN tidak tersedia. Muat ulang halaman.');
+        data.found.forEach(function (onu, index) {
+          const option = document.createElement('option');
+          option.value = String(index);
+          const vendor = inferProvisionVendor(onu.sn);
+          const model = onu.model && onu.model !== 'Unknown' ? ' · ' + onu.model : '';
+          option.textContent = onu.sn + ' · ' + vendor + ' · PON ' + onu.pon + model;
+          detectedSnSelect.appendChild(option);
+        });
+        detectedSnSelect.hidden = false;
+        if (manuallyEnteredSn) {
+          const matchingIndex = data.found.findIndex(function (onu) {
+            return String(onu.sn || '').trim().toUpperCase() === manuallyEnteredSn;
+          });
+          if (matchingIndex >= 0) {
+            detectedSnSelect.value = String(matchingIndex);
+            choose(data.found[matchingIndex]);
+          } else {
+            const manualNotice = document.createElement('div');
+            manualNotice.className = 'small text-warning-emphasis mt-2';
+            manualNotice.textContent = 'SN yang dimasukkan belum ditemukan sebagai ONT baru pada hasil OLT. Periksa SN, atau pastikan ONT belum terdaftar.';
+            resultBox.appendChild(manualNotice);
+          }
+        }
+        detectedSnSelect.onchange = function () {
+          const index = Number(detectedSnSelect.value);
+          if (Number.isInteger(index) && data.found[index]) choose(data.found[index]);
+        };
+        if (data.found.length === 1 && (!manuallyEnteredSn || String(data.found[0].sn || '').trim().toUpperCase() === manuallyEnteredSn)) {
+          detectedSnSelect.value = '0';
+          choose(data.found[0]);
+        }
+      } catch (error) {
+        resultBox.textContent = error.message || 'Pemindaian ONU gagal. Periksa koneksi ke OLT lalu coba lagi.';
+        locationBox.textContent = 'Pemindaian belum berhasil. Silakan coba kembali.';
+      } finally {
+        button.disabled = false;
+      }
+    });
+  });
+
+  document.querySelectorAll('.provision-profile-form').forEach(function (profileForm) {
+    const oltSelect = profileForm.querySelector('.js-customer-olt');
+    const odpSelect = profileForm.querySelector('.js-customer-odp');
+    const latInput = profileForm.querySelector('[name="lat"]');
+    const lngInput = profileForm.querySelector('[name="lng"]');
+    const gpsButton = profileForm.querySelector('.js-get-customer-point');
+    const distanceStatus = profileForm.querySelector('.js-customer-odp-distance');
+    function distanceMetersBetween(lat1, lng1, lat2, lng2) {
+      const rad = value => value * Math.PI / 180;
+      const dLat = rad(lat2 - lat1), dLng = rad(lng2 - lng1);
+      const a = Math.sin(dLat / 2) ** 2 + Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(dLng / 2) ** 2;
+      return 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(Math.max(0, 1 - a)));
+    }
+    function filterOdpOptions() {
+      const oltId = String(oltSelect.value || '');
+      const latText = String(latInput.value || '').trim(), lngText = String(lngInput.value || '').trim();
+      const lat = Number(latText), lng = Number(lngText);
+      const customerCoordsValid = latText !== '' && lngText !== '' && Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+      let selectedStillValid = false;
+      Array.from(odpSelect.options).forEach(function (option, index) {
+        if (index === 0) return;
+        const linkedOlt = String(option.dataset.oltId || '');
+        const sameOlt = !oltId || !linkedOlt || linkedOlt === oltId;
+        const baseLabel = String(option.dataset.baseLabel || option.textContent || '');
+        option.textContent = baseLabel;
+        option.title = '';
+        option.hidden = !sameOlt;
+        option.disabled = !sameOlt;
+        if (!sameOlt) return;
+
+        const odpLatText = String(option.dataset.lat || '').trim(), odpLngText = String(option.dataset.lng || '').trim();
+        const odpLat = Number(odpLatText), odpLng = Number(odpLngText);
+        const odpCoordsValid = odpLatText !== '' && odpLngText !== '' && Number.isFinite(odpLat) && Number.isFinite(odpLng) && odpLat >= -90 && odpLat <= 90 && odpLng >= -180 && odpLng <= 180;
+        if (!odpCoordsValid) {
+          option.disabled = true;
+          option.textContent = baseLabel + ' · GPS ODP belum tersedia';
+          option.title = 'ODP tidak bisa dipilih sebelum koordinat GPS-nya dilengkapi.';
+          return;
+        }
+        if (customerCoordsValid) {
+          const distance = distanceMetersBetween(lat, lng, odpLat, odpLng);
+          const tooFar = !Number.isFinite(distance) || distance > 200 + 1e-6;
+          option.textContent = baseLabel + ' · ' + Math.round(distance) + ' m' + (tooFar ? ' (di luar 200 m — pilih ODP lain)' : '');
+          option.title = tooFar ? 'Jarak lebih dari 200 meter. Pilih ODP lain yang lebih dekat.' : 'Jarak ' + Math.round(distance) + ' meter; memenuhi batas 200 meter.';
+          option.disabled = tooFar;
+        } else {
+          option.disabled = false;
+        }
+        if (option.selected && !option.disabled) selectedStillValid = true;
+      });
+      if (!selectedStillValid && odpSelect.value) odpSelect.value = '';
+
+      if (!distanceStatus) return;
+      if (!customerCoordsValid) {
+        distanceStatus.textContent = 'Ambil GPS di lokasi pelanggan sebelum menyimpan. Batas pelanggan ke ODP maksimal 200 meter.';
+        distanceStatus.className = 'form-text js-customer-odp-distance mb-2 text-warning';
+        return;
+      }
+      const selected = odpSelect.options[odpSelect.selectedIndex];
+      if (!selected || !selected.value) {
+        distanceStatus.textContent = 'Pilih ODP dengan koordinat GPS dalam jarak maksimal 200 meter dari pelanggan.';
+        distanceStatus.className = 'form-text js-customer-odp-distance mb-2 text-danger';
+        return;
+      }
+      const odpLatText = String(selected.dataset.lat || '').trim(), odpLngText = String(selected.dataset.lng || '').trim();
+      const odpLat = Number(odpLatText), odpLng = Number(odpLngText);
+      if (!odpLatText || !odpLngText || !Number.isFinite(odpLat) || !Number.isFinite(odpLng)) {
+        distanceStatus.textContent = 'GPS ODP belum tersedia. Pilih ODP lain yang koordinatnya sudah lengkap.';
+        distanceStatus.className = 'form-text js-customer-odp-distance mb-2 text-danger';
+        return;
+      }
+      const distance = distanceMetersBetween(lat, lng, odpLat, odpLng);
+      if (!Number.isFinite(distance) || distance > 200 + 1e-6) {
+        distanceStatus.textContent = 'Jarak sekitar ' + Math.round(distance) + ' meter. Maksimal 200 meter; cari dan pilih ODP lain yang lebih dekat.';
+        distanceStatus.className = 'form-text js-customer-odp-distance mb-2 text-danger';
+        return;
+      }
+      distanceStatus.textContent = 'Jarak pelanggan ke ODP ' + Math.round(distance) + ' m — memenuhi batas 200 m.';
+      distanceStatus.className = 'form-text js-customer-odp-distance mb-2 text-success';
+    }
+    oltSelect.addEventListener('change', filterOdpOptions);
+    odpSelect.addEventListener('change', filterOdpOptions);
+    latInput.addEventListener('input', filterOdpOptions);
+    lngInput.addEventListener('input', filterOdpOptions);
+    latInput.addEventListener('change', filterOdpOptions);
+    lngInput.addEventListener('change', filterOdpOptions);
+    profileForm.addEventListener('submit', function (event) {
+      filterOdpOptions();
+      const latText = String(latInput.value || '').trim(), lngText = String(lngInput.value || '').trim();
+      const selected = odpSelect.options[odpSelect.selectedIndex];
+      const odpLatText = String(selected && selected.dataset.lat || '').trim(), odpLngText = String(selected && selected.dataset.lng || '').trim();
+      const lat = Number(latText), lng = Number(lngText), odpLat = Number(odpLatText), odpLng = Number(odpLngText);
+      const coordsValid = latText !== '' && lngText !== '' && Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+      const odpCoordsValid = odpLatText !== '' && odpLngText !== '' && Number.isFinite(odpLat) && Number.isFinite(odpLng) && odpLat >= -90 && odpLat <= 90 && odpLng >= -180 && odpLng <= 180;
+      const distance = coordsValid && odpCoordsValid ? distanceMetersBetween(lat, lng, odpLat, odpLng) : Infinity;
+      if (!selected || !selected.value || selected.disabled || !coordsValid || !odpCoordsValid || !Number.isFinite(distance) || distance > 200 + 1e-6) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        alert('Simpan gagal: GPS pelanggan dan ODP harus tersedia, dan jarak maksimal 200 meter. Cari ODP lain yang lebih dekat.');
+      }
+    });
+    filterOdpOptions();
+    gpsButton.addEventListener('click', function () {
+      if (!navigator.geolocation) { alert('GPS tidak didukung perangkat ini. Isi koordinat secara manual.'); return; }
+      gpsButton.disabled = true;
+      gpsButton.textContent = 'Mengambil lokasi GPS...';
+      navigator.geolocation.getCurrentPosition(function (position) {
+        latInput.value = position.coords.latitude.toFixed(7);
+        lngInput.value = position.coords.longitude.toFixed(7);
+        latInput.dispatchEvent(new Event('input', { bubbles: true }));
+        lngInput.dispatchEvent(new Event('input', { bubbles: true }));
+        filterOdpOptions();
+        gpsButton.disabled = false;
+        gpsButton.innerHTML = '<i class="bi bi-check-circle me-1"></i>Titik GPS berhasil diambil';
+      }, function (error) {
+        gpsButton.disabled = false;
+        gpsButton.innerHTML = '<i class="bi bi-crosshair me-1"></i>Ambil Lokasi GPS';
+        alert('Lokasi tidak berhasil diambil: ' + (error.message || 'Periksa izin lokasi dan coba lagi.'));
+      }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 });
+    });
+  });
+
+  // Also close already-persisted manual-binding tasks when the queue is reopened.
+  // This covers the case where the technician cannot use the card's manual close button.
+  let autoClosingManualTasks = false;
+  async function autoCloseExistingManualTasks() {
+    if (autoClosingManualTasks) return;
+    autoClosingManualTasks = true;
+    const cards = Array.from(document.querySelectorAll('.provision-job[data-job-status="bound_manual"]'));
+    let closedAny = false;
+    for (const card of cards) {
+      const customerId = String(card.dataset.customerId || '').trim();
+      if (!customerId) continue;
+      try {
+        const response = await fetch('/tech/provisioning/' + encodeURIComponent(customerId) + '/ack-manual', {
+          method: 'POST',
+          headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+          credentials: 'same-origin',
+          cache: 'no-store'
+        });
+        let result = {};
+        try { result = await response.json(); } catch (_) {}
+        if (response.ok && result.success) closedAny = true;
+        else console.warn('[TECH PROVISIONING] auto-close manual task gagal:', customerId, result.message || response.status);
+      } catch (error) {
+        console.warn('[TECH PROVISIONING] auto-close manual task gagal:', customerId, error);
+      }
+    }
+    autoClosingManualTasks = false;
+    if (closedAny) window.location.reload();
+  }
+  autoCloseExistingManualTasks();
+
+})();
+</script>
+
+<%- include('partials/bottom_nav') %>

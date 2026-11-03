@@ -1,0 +1,299 @@
+<%- include('partials/header') %>
+<style>
+  .ai-wrap{--gawa-bg:#0b1220;--gawa-panel:#111c30;--gawa-border:rgba(148,163,184,.19);max-width:1040px;margin:0 auto;color:#eaf0ff;padding-bottom:18px}
+  .ai-hero{position:relative;isolation:isolate;overflow:hidden;background:radial-gradient(ellipse at 88% -20%,rgba(56,189,248,.22),transparent 42%),linear-gradient(125deg,#111d35 0%,#172554 52%,#172033 100%);border:1px solid rgba(129,140,248,.28);border-radius:24px;padding:clamp(17px,3vw,27px);margin-bottom:14px;box-shadow:0 16px 44px rgba(2,6,23,.22)}
+  .ai-hero:after{content:"";position:absolute;inset:auto -35px -85px auto;width:220px;height:220px;border:1px solid rgba(125,211,252,.15);border-radius:50%;box-shadow:0 0 0 24px rgba(125,211,252,.035),0 0 0 48px rgba(125,211,252,.025);z-index:-1}
+  .ai-brand-avatar{width:64px;height:64px;display:flex;align-items:center;justify-content:center;flex:0 0 64px;border-radius:21px;background:linear-gradient(145deg,#60a5fa,#8b5cf6 75%);font-size:35px;box-shadow:0 8px 25px rgba(59,130,246,.32);border:1px solid rgba(255,255,255,.3)}
+  .ai-brand-name{font-size:clamp(22px,3.4vw,30px);font-weight:850;line-height:1.15;letter-spacing:-.7px;color:#fff;margin:0}
+  .ai-brand-sub{color:#becceb;font-size:13px;line-height:1.55;margin:7px 0 12px;max-width:570px}
+  .ai-pill{display:inline-flex;align-items:center;gap:7px;border:1px solid rgba(148,163,184,.27);background:rgba(15,23,42,.38);border-radius:999px;padding:6px 10px;font-size:11px;color:#e2e8f0}
+  .ai-dot{height:7px;width:7px;border-radius:50%;background:#4ade80;box-shadow:0 0 0 4px rgba(74,222,128,.12)}
+  .ai-chat{height:min(58vh,650px);min-height:310px;overflow-y:auto;overscroll-behavior:contain;background:linear-gradient(180deg,#0d1627,#0a1120);border:1px solid var(--gawa-border);border-radius:22px;padding:clamp(13px,2.5vw,22px);display:flex;flex-direction:column;gap:17px;box-shadow:inset 0 1px 0 rgba(255,255,255,.025)}
+  .ai-empty{margin:auto;text-align:center;color:#9cacc7;max-width:340px;padding:24px 18px}
+  .ai-empty-icon{width:60px;height:60px;border-radius:20px;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;background:linear-gradient(145deg,rgba(59,130,246,.22),rgba(139,92,246,.19));border:1px solid rgba(129,140,248,.23);font-size:28px}
+  .ai-line{display:flex;align-items:flex-end;gap:9px;max-width:95%;align-self:flex-start}
+  .ai-line.user-line{align-self:flex-end;flex-direction:row-reverse}
+  .ai-avatar{height:34px;width:34px;flex:0 0 34px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:19px;background:linear-gradient(145deg,#334155,#1e293b);border:1px solid rgba(148,163,184,.23);box-shadow:0 3px 10px rgba(0,0,0,.12)}
+  .ai-avatar.user-avatar{font-size:15px;background:linear-gradient(145deg,#1d4ed8,#6d28d9);color:#fff}
+  .ai-msg{max-width:calc(100% - 42px);border-radius:18px;padding:12px 15px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;line-height:1.65;box-shadow:0 4px 12px rgba(0,0,0,.08)}
+  .ai-msg.user{background:linear-gradient(140deg,#2563eb,#4f46e5);color:#fff;border:1px solid rgba(165,180,252,.28);border-bottom-right-radius:6px}
+  .ai-msg.assistant{background:linear-gradient(145deg,#18253b,#141e31);border:1px solid rgba(148,163,184,.17);color:#edf3ff;border-bottom-left-radius:6px}
+  .ai-meta{font-size:10px;font-weight:700;letter-spacing:.2px;color:#9db0d0;margin-bottom:5px}
+  .ai-msg.user .ai-meta{color:#dbeafe}
+  .ai-compose{background:linear-gradient(145deg,#121e32,#0f192b);border:1px solid var(--gawa-border);border-radius:22px;padding:12px;margin-top:12px;box-shadow:0 12px 30px rgba(2,6,23,.14)}
+  .ai-compose textarea{resize:vertical;min-height:76px;max-height:180px;background:#0b1323;border:1px solid rgba(148,163,184,.22);color:#f8fafc;border-radius:15px;width:100%;padding:13px 14px;outline:none;line-height:1.5;transition:border-color .2s,box-shadow .2s}
+  .ai-compose textarea::placeholder{color:#7183a2}
+  .ai-compose textarea:focus{border-color:#60a5fa;box-shadow:0 0 0 3px rgba(96,165,250,.12)}
+  .ai-action{display:inline-flex;align-items:center;justify-content:center;gap:5px;border:1px solid rgba(148,163,184,.22);background:#1c2a40;color:#eff6ff;border-radius:13px;padding:10px 14px;font-weight:650;font-size:13px;transition:transform .15s,background .15s,border-color .15s;cursor:pointer}
+  .ai-action:hover{background:#253753;border-color:rgba(125,211,252,.4);color:#fff;transform:translateY(-1px)}
+  .ai-action.primary{background:linear-gradient(120deg,#2563eb,#4f46e5);border-color:#4f6ff4;box-shadow:0 5px 16px rgba(37,99,235,.22)}
+  .ai-action.primary:hover{background:linear-gradient(120deg,#1d4ed8,#4338ca)}
+  .ai-action:disabled{opacity:.55;cursor:wait;transform:none}
+  .ai-preview{display:none;align-items:center;gap:10px;margin:10px 0;padding:9px;background:rgba(15,23,42,.65);border:1px solid var(--gawa-border);border-radius:13px;color:#cbd5e1;font-size:12px}
+  .ai-preview img{width:58px;height:58px;object-fit:cover;border-radius:10px;border:1px solid #475569}
+  .ai-warning{font-size:11px;color:#8192af;line-height:1.6}
+  .ai-tools{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:10px}
+  .ai-tools .ai-action{min-height:43px}
+  .ai-small-label{font-size:11px;font-weight:700;letter-spacing:.65px;text-transform:uppercase;color:#90a4c5;margin-bottom:8px}
+  .ai-welcome{border:1px solid rgba(96,165,250,.2);background:linear-gradient(115deg,rgba(30,64,175,.13),rgba(91,33,182,.1));border-radius:16px;padding:13px 15px;margin-bottom:2px}
+  .ai-welcome-title{font-weight:750;color:#f3f7ff;margin-bottom:5px}
+  @media(min-width:768px){.ai-chat{height:62vh}.ai-line{max-width:86%}.ai-msg{font-size:14px;padding:13px 16px}}
+  @media(max-width:520px){.ai-brand-avatar{width:54px;height:54px;flex-basis:54px;border-radius:18px;font-size:30px}.ai-hero{border-radius:20px}.ai-chat{min-height:300px;border-radius:19px}.ai-compose{border-radius:19px}.ai-action{padding:10px 11px}.ai-line{max-width:100%;gap:7px}.ai-avatar{width:30px;height:30px;flex-basis:30px;border-radius:10px}.ai-msg{max-width:calc(100% - 37px);padding:11px 12px}.ai-tools{grid-template-columns:1fr}}
+  @media(prefers-reduced-motion:reduce){.ai-action{transition:none}}
+  /* Full-screen chat layout */
+  html,body{margin:0!important;padding:0!important;background:#212121!important}
+  body{overflow:hidden!important}
+  .ai-fullscreen{position:fixed;inset:0;z-index:1055;display:flex;flex-direction:column;background:#212121;color:#ececec;padding:0;margin:0;width:100%;height:100vh;height:100dvh}
+  .ai-topbar{height:58px;min-height:58px;display:flex;align-items:center;gap:10px;padding:0 14px;border-bottom:1px solid rgba(255,255,255,.09);background:#212121}
+  .ai-back-btn{width:36px;height:36px;flex:0 0 36px;display:inline-flex;align-items:center;justify-content:center;border:1px solid #d7e5fb;border-radius:10px;background:#eaf2ff;color:#164da4;font-size:21px;text-decoration:none}
+  .ai-back-btn:active{transform:scale(.96)}
+  .ai-topbrand{display:flex;align-items:center;gap:9px;min-width:0;font-size:16px;font-weight:750;letter-spacing:-.2px;color:#f5f5f5}
+  .ai-topbrand-avatar{width:35px;height:35px;display:grid;place-items:center;background:#343434;border:1px solid #4a4a4a;border-radius:50%;font-size:21px}
+  .ai-top-actions{margin-left:auto;display:flex;align-items:center;gap:7px}
+  .ai-top-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:35px;padding:7px 10px;border:1px solid #484848;background:#2d2d2d;color:#f1f1f1;border-radius:10px;font-size:12px;font-weight:600;white-space:nowrap}
+  .ai-top-btn:hover{background:#3b3b3b;color:#fff}
+  .ai-fullscreen .ai-wrap{max-width:850px;width:100%;flex:1;min-height:0;margin:0 auto;padding:0 16px;display:flex;flex-direction:column}
+  .ai-fullscreen .ai-hero{display:none}
+  .ai-fullscreen .ai-chat{height:auto;min-height:0;flex:1;overflow-y:auto;border:0;border-radius:0;padding:24px 2px 30px;background:transparent;box-shadow:none;gap:25px}
+  .ai-fullscreen .ai-empty{max-width:520px;padding:20px;color:#ececec}
+  .ai-fullscreen .ai-empty-icon{width:56px;height:56px;border-radius:50%;background:#303030;border:1px solid #4a4a4a}
+  .ai-fullscreen .ai-line{max-width:100%;gap:11px}
+  .ai-fullscreen .ai-avatar{display:none}
+  .ai-fullscreen .ai-msg{max-width:100%;border:0;box-shadow:none;font-size:15px;line-height:1.75;padding:0;background:transparent!important;color:#ececec!important;border-radius:0}
+  .ai-fullscreen .ai-msg.user{font-weight:550;color:#fff!important;background:#303030!important;border:1px solid #393939;border-radius:20px;padding:10px 15px;max-width:min(80%,620px)}
+  .ai-fullscreen .ai-msg.assistant{padding-top:2px}
+  .ai-body p{margin:0 0 10px}.ai-body p:last-child{margin-bottom:0}.ai-body strong{font-weight:750;color:#fff}.ai-body ul,.ai-body ol{padding-left:23px;margin:8px 0 12px}.ai-body li{padding-left:3px;margin:4px 0}.ai-body .ai-list-continuation{list-style:none;margin-left:-3px}.ai-md-heading{font-size:1.08em;font-weight:750;line-height:1.4;margin:15px 0 8px;color:#fff}.ai-inline-code{background:#383838;border:1px solid #4a4a4a;border-radius:5px;padding:2px 5px;font-size:.9em;color:#f3d7a5;overflow-wrap:anywhere}.ai-code{white-space:pre;overflow-x:auto;max-width:100%;padding:13px 14px;margin:10px 0;background:#151515;border:1px solid #414141;border-radius:10px;font-size:12px;line-height:1.55;color:#e5e7eb}.ai-code code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.ai-md-quote{border-left:3px solid #777;padding:4px 0 4px 12px;margin:8px 0;color:#c9c9c9}.ai-body a{color:#93c5fd;text-decoration:underline;text-underline-offset:2px}
+  .ai-fullscreen .ai-meta{color:#a8a8a8;font-size:11px;letter-spacing:0;margin-bottom:7px}
+  .ai-fullscreen .ai-compose{flex:none;margin:0 0 9px;padding:10px;border:1px solid #4a4a4a;border-radius:25px;background:#303030;box-shadow:none}
+  .ai-fullscreen .ai-small-label,.ai-fullscreen .ai-warning{display:none}
+  .ai-compose-row{display:flex;align-items:flex-end;gap:9px}
+  .ai-fullscreen .ai-compose textarea{flex:1;min-width:0;min-height:44px;max-height:180px;resize:none;border:0;background:transparent;border-radius:16px;padding:11px 4px;color:#f5f5f5;outline:none;box-shadow:none}
+  .ai-fullscreen .ai-compose textarea::placeholder{color:#a1a1a1}
+  .ai-plus-btn{width:42px;height:42px;flex:0 0 42px;display:grid;place-items:center;border:0;border-radius:50%;background:#454545;color:#fff;font-size:23px;cursor:pointer}
+  .ai-plus-btn:hover{background:#555}
+  .ai-fullscreen .ai-action.primary{width:42px;height:42px;flex:0 0 42px;padding:0;border:0;border-radius:50%;background:#f5f5f5;color:#202020;box-shadow:none}
+  .ai-fullscreen .ai-action.primary:hover{background:#dcdcdc;color:#111}
+  .ai-fullscreen .ai-action.primary i{margin:0!important}
+  .ai-fullscreen .ai-tools,.ai-fullscreen .ai-wrap>p,.ai-fullscreen .ai-wrap>a{display:none!important}
+  .ai-fullscreen .ai-preview{margin:0 0 8px}
+  .ai-fullscreen .ai-preview img{width:54px;height:54px}
+  .ai-bottom-note{text-align:center;color:#929292;font-size:10px;padding:0 12px 8px;line-height:1.4}
+  @media(max-width:520px){.ai-topbar{height:54px;min-height:54px;padding:0 9px}.ai-topbrand{font-size:15px}.ai-topbrand-avatar{width:32px;height:32px;font-size:19px}.ai-top-btn{min-height:33px;padding:6px 8px;font-size:11px}.ai-top-btn .ai-btn-label{display:none}.ai-fullscreen .ai-wrap{padding:0 11px}.ai-fullscreen .ai-chat{padding-top:18px;gap:22px}.ai-fullscreen .ai-compose{margin-bottom:7px;border-radius:23px}.ai-bottom-note{font-size:9px}.ai-fullscreen .ai-msg.user{max-width:88%}}
+  /* Tema putih-biru konsisten untuk Live Chat */
+  html,body{background:#f4f7fc!important;color:#1e293b!important}
+  .ai-fullscreen{background:#f4f7fc!important;color:#1e293b!important}
+  .ai-topbar{background:#fff!important;border-bottom:1px solid #e2eaf5!important}
+  .ai-topbrand{color:#1e293b!important}
+  .ai-topbrand-avatar,.ai-fullscreen .ai-empty-icon{background:#eaf2ff!important;border:1px solid #d7e5fb!important}
+  .ai-top-btn{background:#fff!important;color:#164da4!important;border-color:#d7e5fb!important}
+  .ai-fullscreen .ai-chat{background:transparent!important}
+  .ai-fullscreen .ai-empty{color:#52637a!important}
+  .ai-fullscreen .ai-msg,.ai-fullscreen .ai-msg.assistant{color:#334155!important}
+  .ai-fullscreen .ai-msg.user{background:#eaf2ff!important;color:#164da4!important;border:1px solid #d7e5fb!important}
+  .ai-body strong,.ai-md-heading{color:#1e293b!important}
+  .ai-inline-code{background:#edf2fa!important;border-color:#d9e3f0!important;color:#164da4!important}
+  .ai-code{background:#f1f5f9!important;border-color:#dbe4f0!important;color:#334155!important}
+  .ai-md-quote{border-left-color:#2563eb!important;color:#52637a!important}
+  .ai-body a{color:#1559b7!important}
+  .ai-fullscreen .ai-meta,.ai-bottom-note{color:#718096!important}
+  .ai-fullscreen .ai-compose{background:#fff!important;border-color:#dbe4f0!important}
+  .ai-fullscreen .ai-compose textarea{color:#1e293b!important}
+  .ai-fullscreen .ai-compose textarea::placeholder{color:#718096!important}
+  .ai-plus-btn{background:#eaf2ff!important;color:#164da4!important}
+  .ai-fullscreen .ai-action.primary{background:#1d5fc4!important;color:#fff!important}
+</style>
+<div class="ai-fullscreen">
+  <header class="ai-topbar">
+    <a href="/tech" class="ai-back-btn" aria-label="Kembali ke dashboard" title="Kembali"><i class="bi bi-arrow-left"></i></a>
+    <div class="ai-topbrand"><span class="ai-topbrand-avatar"><i class="bi bi-headset"></i></span><span>Asisten Teknisi</span></div>
+    <div class="ai-top-actions">
+      <button id="aiDiagnose" type="button" class="ai-top-btn" title="Diagnostik server"><i class="bi bi-activity"></i><span class="ai-btn-label">Diagnostik server</span></button>
+      <button id="aiClear" type="button" class="ai-top-btn" title="Hapus percakapan"><i class="bi bi-trash3"></i><span class="ai-btn-label">Hapus percakapan</span></button>
+    </div>
+  </header>
+  <main class="ai-wrap">
+    <section class="ai-hero">
+      <div class="d-flex align-items-start gap-3">
+        <div class="ai-brand-avatar" aria-label="Asisten Teknisi"><i class="bi bi-headset"></i></div>
+        <div class="flex-grow-1">
+          <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+            <h1 class="ai-brand-name">Asisten Teknisi</h1>
+            <span class="ai-pill"><span class="ai-dot"></span> Siap membantu</span>
+          </div>
+          <p class="ai-brand-sub">Asisten teknisi untuk membantu analisis gangguan jaringan, perangkat, dan billing berdasarkan data yang tersedia.</p>
+          <div class="d-flex flex-wrap gap-2">
+            <span class="ai-pill"><i class="bi bi-activity"></i> Diagnostik server</span>
+            <span class="ai-pill"><i class="bi bi-shield-check"></i> Akses terjaga</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div id="aiChat" class="ai-chat" aria-live="polite" aria-label="Percakapan dengan asisten teknisi">
+      <div class="ai-empty">
+        <div class="ai-empty-icon">😎</div>
+        <div class="fw-semibold text-light">Asisten teknisi siap membantu</div>
+        <div class="small mt-2">Jelaskan kendala jaringan atau billing, atau lampirkan tangkapan layar pesan kesalahan.</div>
+      </div>
+    </div>
+
+    <form id="aiForm" class="ai-compose" enctype="multipart/form-data">
+
+      <div id="aiPreview" class="ai-preview"><img id="aiPreviewImg" alt="Pratinjau foto"><span id="aiFileName" class="flex-grow-1"></span><button type="button" id="aiRemovePhoto" class="ai-action" aria-label="Hapus foto"><i class="bi bi-x-lg"></i></button></div>
+      <div class="ai-compose-row">
+        <label class="ai-plus-btn" for="aiPhoto" title="Tambah foto" aria-label="Tambah foto">+</label>
+        <input id="aiPhoto" name="photo" type="file" accept="image/jpeg,image/png,image/webp,image/*" hidden>
+        <textarea id="aiMessage" name="message" maxlength="3000" placeholder="Tulis pertanyaan teknis…" aria-label="Pesan untuk asisten teknisi"></textarea>
+        <button id="aiSend" class="ai-action primary" type="submit" aria-label="Kirim pesan" title="Kirim pesan"><i class="bi bi-arrow-up"></i></button>
+      </div>
+      <div class="ai-warning mt-2"><i class="bi bi-shield-lock me-1"></i> Foto maksimal 5 MB. Jangan kirim kata sandi, token, kredensial perangkat, atau data pribadi pelanggan.</div>
+    </form>
+
+  </main>
+</div>
+<script>
+(() => {
+  const chat = document.getElementById('aiChat');
+  const form = document.getElementById('aiForm');
+  const message = document.getElementById('aiMessage');
+  const photo = document.getElementById('aiPhoto');
+  const preview = document.getElementById('aiPreview');
+  const previewImg = document.getElementById('aiPreviewImg');
+  const fileName = document.getElementById('aiFileName');
+  const send = document.getElementById('aiSend');
+  let objectUrl = null;
+  let busy = false;
+
+  // Render Markdown ringan dengan escaping HTML agar format rapi tanpa membuka celah HTML dari balasan AI.
+  function renderMarkdown(input) {
+    const escapeHtml = value => String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;').replace(/'/g, '&#39;');
+    let source = String(input || '').replace(/\r\n?/g, '\n');
+    const codeBlocks = [];
+    source = source.replace(/```([^\n`]*)\n?([\s\S]*?)```/g, (_, language, code) => {
+      const token = '%%CODEBLOCK' + codeBlocks.length + '%%';
+      codeBlocks.push('<pre class="ai-code"><code>' + escapeHtml(code.replace(/\n$/, '')) + '</code></pre>');
+      return '\n' + token + '\n';
+    });
+    source = escapeHtml(source);
+    source = source.replace(/`([^`\n]+)`/g, '<code class="ai-inline-code">$1</code>')
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/__(.+?)__/g, '<strong>$1</strong>')
+      .replace(/~~(.+?)~~/g, '<del>$1</del>')
+      .replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>')
+      .replace(/(^|[^_])_([^_\n]+)_/g, '$1<em>$2</em>')
+      .replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+    const blocks = source.split(/\n{2,}/).map(block => {
+      const trimmed = block.trim();
+      if (!trimmed) return '';
+      if (/^%%CODEBLOCK\d+%%$/.test(trimmed)) return trimmed;
+      const heading = trimmed.match(/^(#{1,4})\s+(.+)$/);
+      if (heading) return '<h' + heading[1].length + ' class="ai-md-heading">' + heading[2] + '</h' + heading[1].length + '>';
+      if (/^\s*[-*+]\s+/m.test(trimmed)) return '<ul>' + trimmed.split('\n').map(line => line.match(/^\s*[-*+]\s+(.+)$/) ? '<li>' + line.replace(/^\s*[-*+]\s+/, '') + '</li>' : '<li class="ai-list-continuation">' + line + '</li>').join('') + '</ul>';
+      if (/^\s*\d+[.)]\s+/m.test(trimmed)) return '<ol>' + trimmed.split('\n').map(line => line.match(/^\s*\d+[.)]\s+(.+)$/) ? '<li>' + line.replace(/^\s*\d+[.)]\s+/, '') + '</li>' : '<li>' + line + '</li>').join('') + '</ol>';
+      if (/^&gt;\s?/.test(trimmed)) return '<blockquote class="ai-md-quote">' + trimmed.replace(/^&gt;\s?/gm, '') + '</blockquote>';
+      return '<p>' + trimmed.replace(/\n/g, '<br>') + '</p>';
+    });
+    return blocks.join('').replace(/%%CODEBLOCK(\d+)%%/g, (_, index) => codeBlocks[Number(index)] || '');
+  }
+
+  function bubble(role, text, meta) {
+    const empty = chat.querySelector('.ai-empty'); if (empty) empty.remove();
+    const isUser = role === 'user';
+    const line = document.createElement('div');
+    line.className = 'ai-line' + (isUser ? ' user-line' : '');
+    const avatar = document.createElement('div');
+    avatar.className = 'ai-avatar' + (isUser ? ' user-avatar' : '');
+    avatar.textContent = isUser ? '👤' : '😎';
+    avatar.setAttribute('aria-hidden', 'true');
+    const node = document.createElement('div');
+    node.className = 'ai-msg ' + (isUser ? 'user' : 'assistant');
+    if (meta) { const m = document.createElement('div'); m.className = 'ai-meta'; m.textContent = meta; node.appendChild(m); }
+    const body = document.createElement('div'); body.className = 'ai-body'; body.innerHTML = renderMarkdown(text || ''); node.appendChild(body);
+    line.appendChild(avatar); line.appendChild(node); chat.appendChild(line); chat.scrollTop = chat.scrollHeight;
+    return node;
+  }
+  function setBusy(value) { busy = value; send.disabled = value; document.getElementById('aiDiagnose').disabled = value; document.getElementById('aiClear').disabled = value; send.innerHTML = value ? '<span class="spinner-border spinner-border-sm"></span>' : '<i class="bi bi-arrow-up"></i>'; }
+  function setPhoto(file) {
+    if (objectUrl) URL.revokeObjectURL(objectUrl); objectUrl = null;
+    if (!file) { photo.value = ''; preview.style.display = 'none'; previewImg.removeAttribute('src'); fileName.textContent = ''; return; }
+    if (!/^image\/(jpeg|png|webp)$/i.test(file.type) && !/\.(jpe?g|png|webp)$/i.test(file.name)) { alert('Pilih foto JPEG, PNG, atau WebP.'); photo.value = ''; return; }
+    if (file.size > 5 * 1024 * 1024) { alert('Ukuran foto maksimal 5 MB.'); photo.value = ''; return; }
+    objectUrl = URL.createObjectURL(file); previewImg.src = objectUrl; fileName.textContent = file.name + ' (' + (file.size / 1024 / 1024).toFixed(2) + ' MB)'; preview.style.display = 'flex';
+  }
+  photo.addEventListener('change', () => setPhoto(photo.files && photo.files[0]));
+  document.getElementById('aiRemovePhoto').addEventListener('click', () => setPhoto(null));
+
+  function showWelcome() {
+    bubble('assistant', 'Assalamu’alaikum! Halo, saya Asisten Teknisi. Ada yang ingin diperiksa hari ini? Saya siap membantu memeriksa server billing, MikroTik, OLT/ONU, dan kendala provisioning.', 'Salam dari Gawa');
+  }
+  async function loadHistory() {
+    chat.innerHTML = '';
+    try {
+      const r = await fetch('/tech/api/ai/history', { headers: { 'Accept': 'application/json' } });
+      if (!r.ok) throw new Error('Tidak dapat memuat riwayat chat.');
+      const data = await r.json();
+      if (data.messages && data.messages.length) {
+        data.messages.forEach(m => bubble(m.role, m.content, m.role === 'user' ? 'Anda' : 'Asisten Teknisi · ' + (m.createdAt || '')));
+      }
+    } catch (e) {
+      console.warn('Riwayat percakapan belum dapat dimuat:', e.message);
+    }
+    // Salam ditampilkan setiap halaman AI dibuka; tidak dimasukkan ke riwayat agar tidak menumpuk di database.
+    showWelcome();
+  }
+  async function sendMessage(diagnose) {
+    if (busy) return;
+    const text = message.value.trim(); const file = photo.files && photo.files[0];
+    if (!diagnose && !text && !file) { message.focus(); return; }
+    const fd = new FormData(); fd.append('message', diagnose ? (text || 'Periksa error provisioning terbaru dan kondisi server billing saya.') : text); fd.append('diagnose', diagnose ? '1' : '0'); if (file) fd.append('photo', file);
+    if (text || file) bubble('user', (text || (file ? 'Tolong analisis foto ini.' : '')) + (file ? '\n📷 Foto: ' + file.name : ''), 'Anda');
+    else bubble('user', 'Diagnostik server billing dan error provisioning terbaru.', 'Permintaan diagnosis');
+    message.value = ''; setPhoto(null); setBusy(true); const pending = bubble('assistant', 'Asisten teknisi sedang menyiapkan pemeriksaan…', 'Asisten Teknisi');
+    try {
+      const r = await fetch('/tech/api/ai/chat', { method: 'POST', body: fd, headers: { 'Accept': 'application/json' } }); let d = await r.json();
+      if (!r.ok || !d.success) throw new Error(d.message || 'Permintaan gagal.');
+      let result = d;
+      if (d.pending && d.jobId) {
+        const deadline = Date.now() + 180000;
+        while (Date.now() < deadline) {
+          await new Promise(resolve => setTimeout(resolve, 1800));
+          const jr = await fetch('/tech/api/ai/jobs/' + encodeURIComponent(d.jobId), { headers: { 'Accept': 'application/json' } });
+          const jd = await jr.json();
+          if (!jr.ok) throw new Error(jd.message || 'Status pekerjaan AI tidak dapat dibaca.');
+          if (jd.status === 'running') { const waitBody = pending.querySelector('.ai-body'); if (waitBody) waitBody.textContent = 'Asisten teknisi sedang menganalisis' + (file ? ' foto' : ' data server') + '…'; continue; }
+          if (jd.status === 'error') throw new Error(jd.message || 'AI gagal memproses permintaan.');
+          result = jd.result; break;
+        }
+        if (!result || result.pending) throw new Error('Analisis masih berjalan terlalu lama. Tekan Muat Ulang Chat sebentar lagi untuk melihat hasilnya.');
+      }
+      const body = pending.querySelector('.ai-body'); if (body) body.innerHTML = renderMarkdown(result.answer || '');
+      const meta = pending.querySelector('.ai-meta'); if (meta) meta.textContent = 'Asisten Teknisi' + (result.imageReceived ? ' · foto diterima' : '');
+      chat.scrollTop = chat.scrollHeight;
+    } catch (e) {
+      const body = pending.querySelector('.ai-body'); if (body) body.innerHTML = renderMarkdown('Gagal memproses: ' + e.message + '\nCoba lagi beberapa saat.');
+    } finally { setBusy(false); }
+  }
+  form.addEventListener('submit', e => { e.preventDefault(); sendMessage(false); });
+  document.getElementById('aiDiagnose').addEventListener('click', () => sendMessage(true));
+  document.getElementById('aiClear').addEventListener('click', async () => {
+    if (busy) return;
+    if (!confirm('Hapus seluruh riwayat percakapan pada akun teknisi ini? Data pelanggan, billing, dan akun lain tidak akan dihapus.')) return;
+    const button = document.getElementById('aiClear');
+    button.disabled = true;
+    try {
+      const r = await fetch('/tech/api/ai/history/clear', { method: 'POST', headers: { 'Accept': 'application/json' } });
+      const data = await r.json();
+      if (!r.ok || !data.success) throw new Error(data.message || 'Hapus percakapan gagal.');
+      chat.innerHTML = '';
+      showWelcome();
+    } catch (e) {
+      alert('Percakapan belum berhasil dihapus: ' + e.message);
+    } finally {
+      button.disabled = false;
+    }
+  });
+  message.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); } });
+  loadHistory();
+})();
+</script>
+<%- include('partials/bottom_nav') %>

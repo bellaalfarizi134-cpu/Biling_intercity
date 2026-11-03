@@ -1,0 +1,44 @@
+# Runtime configuration and secrets
+.env
+.env.*
+!.env.example
+settings.json
+settings.json.*
+*.pem
+*.key
+.npmrc
+
+# Runtime databases and sessions
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+database/
+data/
+storage/
+logs/
+auth_info_baileys/
+
+# Customer uploads and generated installers
+public/uploads/
+public/downloads/*.apk
+*.apk
+*.aab
+
+# Dependencies, backups, and generated artifacts
+node_modules/
+backups/
+backup-aman/
+.build-teknisi/
+*.bak*
+*.backup*
+*.before-*
+*.sebelum*
+*.removed-*
+*.broken*
+*.malformed*
+*.korup*
+*.recovered*
+*.tar.gz
+*.tmp
+*.log

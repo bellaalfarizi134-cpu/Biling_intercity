@@ -1,0 +1,65 @@
+<%- include('partials/header') %>
+<style>
+  #pppoeSearch{background:#fff!important;color:#1e293b!important;border-color:#cbd5e1!important}
+  #pppoeSearch::placeholder{color:#718096!important}
+  .pppoe-row .text-white{color:#1e293b!important}
+  .pppoe-row .text-info{color:#1559b7!important}
+  .pppoe-row{line-height:1.55}
+  .pppoe-row .row.small{font-size:13px!important}
+  .pppoe-row .text-secondary{color:#64748b!important}
+</style>
+<div class="d-flex justify-content-between align-items-center mb-3">
+  
+  <button type="button" id="refreshPppoe" class="btn btn-outline-info btn-sm rounded-3"><i class="bi bi-arrow-clockwise me-1"></i>Perbarui</button>
+</div>
+<div class="stat-grid mb-3">
+  <button type="button" class="stat-box pppoe-filter-box" data-filter="active" style="border-left:3px solid #10b981;text-align:left"><div class="lbl"><i class="bi bi-wifi me-1"></i> PPPoE Aktif</div><div class="val text-success" id="pppoeActiveCount">-</div></button>
+  <button type="button" class="stat-box pppoe-filter-box" data-filter="disconnected" style="border-left:3px solid #ef4444;text-align:left"><div class="lbl"><i class="bi bi-wifi-off me-1"></i> Tidak Aktif</div><div class="val text-danger" id="pppoeDisconnectedCount">-</div></button>
+</div>
+<div class="t-card mb-3">
+  <label for="pppoeSearch" class="form-label small text-secondary">Cari username, nama, router, atau profil</label>
+  <input id="pppoeSearch" class="form-control bg-dark border-secondary text-white" placeholder="Cari username, nama pelanggan, atau router…" autocomplete="off">
+  <div class="d-flex justify-content-between mt-2 small text-secondary"><span id="pppoeCount">Memuat akun PPPoE dari MikroTik…</span><span id="pppoeUpdated">Belum ada pembaruan</span></div>
+  <div id="pppoeRouterErrors" class="small text-warning mt-2" style="display:none"></div>
+</div>
+<div class="d-flex justify-content-between align-items-center mb-2"><div class="fw-bold" id="pppoeListTitle">Seluruh akun PPPoE</div><button type="button" class="btn btn-sm btn-link text-secondary text-decoration-none" id="pppoeShowAll">Semua</button></div>
+<div id="pppoeList"><div class="t-card text-center text-secondary py-4"><span class="spinner-border spinner-border-sm me-2"></span>Memuat akun PPPoE dari MikroTik…</div></div>
+<script>
+let pppoeRows = [];
+let pppoeFilter = 'all';
+let pppoeLoading = false;
+function escPppoe(v) { return String(v ?? '-').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function renderPppoeRows() {
+  const q = (document.getElementById('pppoeSearch').value || '').trim().toLowerCase();
+  const rows = pppoeRows.filter(c => (pppoeFilter === 'all' || c.status === pppoeFilter) && [c.name,c.pppoe,c.routerName,c.profile,c.packageName,c.ip].join(' ').toLowerCase().includes(q));
+  document.getElementById('pppoeCount').textContent = rows.length + ' akun ditampilkan dari ' + pppoeRows.length;
+  document.getElementById('pppoeListTitle').textContent = pppoeFilter === 'active' ? 'PPPoE Aktif' : pppoeFilter === 'disconnected' ? 'PPPoE Tidak Aktif' : pppoeFilter === 'unknown' ? 'Status tidak diketahui' : 'Semua Akun PPPoE';
+  if (!rows.length) { document.getElementById('pppoeList').innerHTML = '<div class="t-card text-center text-secondary py-4">Tidak ditemukan akun yang sesuai dengan pencarian.</div>'; return; }
+  document.getElementById('pppoeList').innerHTML = rows.map(c => {
+    const active = c.status === 'active'; const unknown = c.status === 'unknown';
+    const badge = active ? 'bg-success' : (unknown ? 'bg-warning text-dark' : 'bg-danger');
+    const label = active ? 'AKTIF' : (unknown ? 'TIDAK DIKETAHUI' : 'TIDAK AKTIF');
+    return '<div class="t-card pppoe-row"><div class="d-flex align-items-start justify-content-between gap-2"><div class="min-w-0"><div class="fw-bold text-white text-break">' + escPppoe(c.name) + '</div><div class="text-info fw-semibold text-break mt-1"><i class="bi bi-person-badge me-1"></i>' + escPppoe(c.pppoe) + '</div></div><span class="badge ' + badge + '">' + label + '</span></div><div class="row g-2 mt-2 small"><div class="col-6"><div class="text-secondary">Router</div><div>' + escPppoe(c.routerName) + '</div></div><div class="col-6"><div class="text-secondary">Profile</div><div>' + escPppoe(c.profile) + (c.disabled ? ' · Disabled' : '') + '</div></div><div class="col-6"><div class="text-secondary">IP Aktif</div><div>' + escPppoe(c.ip) + '</div></div><div class="col-6"><div class="text-secondary">Uptime</div><div>' + escPppoe(c.uptime) + '</div></div></div></div>';
+  }).join('');
+}
+async function loadPppoe() {
+  if (pppoeLoading) return; pppoeLoading = true;
+  try {
+    const res = await fetch('/tech/api/mikrotik/pppoe-status', {cache:'no-store'}); const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || 'Data MikroTik tidak dapat dibaca.');
+    pppoeRows = Array.isArray(data.customers) ? data.customers : [];
+    document.getElementById('pppoeActiveCount').textContent = data.summary.active; document.getElementById('pppoeDisconnectedCount').textContent = data.summary.disconnected;
+    document.getElementById('pppoeUpdated').textContent = 'Update ' + new Date(data.updatedAt).toLocaleTimeString('id-ID');
+    const errors = Array.isArray(data.routerErrors) ? data.routerErrors : []; const errBox = document.getElementById('pppoeRouterErrors');
+    errBox.style.display = errors.length ? '' : 'none'; errBox.textContent = errors.length ? 'Peringatan koneksi router: ' + errors.map(e => e.router + ' (' + e.error + ')').join('; ') : '';
+    renderPppoeRows();
+  } catch (e) { document.getElementById('pppoeList').innerHTML = '<div class="t-card text-danger"><i class="bi bi-exclamation-triangle me-2"></i>' + escPppoe(e.message) + '</div>'; document.getElementById('pppoeUpdated').textContent = 'Data gagal diperbarui.'; }
+  finally { pppoeLoading = false; }
+}
+document.getElementById('pppoeSearch').addEventListener('input', renderPppoeRows);
+document.querySelectorAll('.pppoe-filter-box').forEach(el => el.addEventListener('click', () => { pppoeFilter = pppoeFilter === el.dataset.filter ? 'all' : el.dataset.filter; renderPppoeRows(); }));
+document.getElementById('pppoeShowAll').addEventListener('click', () => { pppoeFilter = 'all'; renderPppoeRows(); });
+document.getElementById('refreshPppoe').addEventListener('click', loadPppoe);
+loadPppoe(); setInterval(loadPppoe, 10000);
+</script>
+<%- include('partials/bottom_nav') %>

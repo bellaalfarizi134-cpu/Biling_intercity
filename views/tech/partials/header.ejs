@@ -1,0 +1,329 @@
+<!-- views/tech/partials/header.ejs -->
+<!DOCTYPE html>
+<html lang="<%= lang || 'id' %>">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>
+    <%= title %> - <%= company %>
+  </title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <style>
+    html {
+      width: 100%;
+      min-height: 100%;
+      background: #0f172a;
+    }
+
+    body {
+      background-color: #0f172a;
+      color: #f8fafc;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      padding-top: calc(56px + env(safe-area-inset-top));
+      padding-bottom: calc(12px + env(safe-area-inset-bottom));
+      margin: 0;
+      min-height: 100vh;
+      min-height: 100dvh;
+      width: 100%;
+      overflow-x: hidden;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Teknisi: gunakan lebar layar HP tanpa gutter container Bootstrap yang besar */
+    .container.py-3 {
+      width: 100%;
+      max-width: none;
+      padding-left: 10px !important;
+      padding-right: 10px !important;
+      padding-top: 12px !important;
+    }
+
+    .top-nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: calc(56px + env(safe-area-inset-top));
+      padding: env(safe-area-inset-top) 10px 0;
+      box-sizing: border-box;
+      background: rgba(30, 41, 59, 0.97);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid #334155;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 1000;
+    }
+
+    .top-nav-title {
+      font-weight: 700;
+      font-size: 16px;
+      margin: 0;
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .top-nav-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 34px;
+      min-height: 38px;
+      background: transparent;
+      border: none;
+      color: #f8fafc;
+      font-size: 20px;
+      padding: 4px;
+      text-decoration: none;
+      flex-shrink: 0;
+    }
+
+    .top-nav-back {
+      gap: 0;
+      width: 38px;
+      min-width: 38px;
+      height: 38px;
+      padding: 0;
+      font-size: 22px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    /* Tombol kembali hanya ditampilkan pada halaman fitur, bukan dashboard. */
+    body.tech-dashboard .top-nav-back { display: none !important; }
+
+    @media (max-width: 380px) {
+      .top-nav { gap: 5px; padding-left: 6px; padding-right: 6px; }
+      .top-nav-title { font-size: 14px; }
+      .top-nav-back span { display: none; }
+      .top-nav-btn { min-width: 30px; }
+    }
+
+    /* Navigasi bawah dinonaktifkan sesuai permintaan. */
+    .bottom-nav { display: none !important; }
+    /* Bottom Navigation */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: calc(65px + env(safe-area-inset-bottom));
+      background: rgba(30, 41, 59, 0.97);
+      backdrop-filter: blur(10px);
+      border-top: 1px solid #334155;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 1000;
+      padding: 0 4px env(safe-area-inset-bottom);
+      box-sizing: border-box;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+    }
+    .bottom-nav::-webkit-scrollbar { display: none; }
+
+    /* Navigasi bawah tetap tersedia di HP; daftar dapat digeser horizontal. */
+    @media (max-width: 767.98px) {
+      .bottom-nav { justify-content: flex-start; }
+      .nav-item { flex: 0 0 70px; min-width: 70px; }
+      .container.py-3 { padding-bottom: 12px !important; }
+    }
+    @media (min-width: 768px) {
+      .bottom-nav { justify-content: center; }
+      .nav-item { flex: 0 1 100px; }
+    }
+
+    .nav-item {
+      display: flex;
+      flex: 1 0 66px;
+      min-width: 66px;
+      height: 100%;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      color: #94a3b8;
+      text-decoration: none;
+      font-size: 10px;
+      font-weight: 500;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .nav-item i {
+      font-size: 22px;
+      margin-bottom: 2px;
+    }
+
+    .nav-item.active {
+      color: #3b82f6;
+    }
+
+    /* Cards & Utilities */
+    .t-card {
+      background: #1e293b;
+      border-radius: 16px;
+      padding: 15px;
+      margin-bottom: 15px;
+      border: 1px solid #334155;
+    }
+
+    .badge-status {
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .badge-open {
+      background: rgba(239, 68, 68, 0.2);
+      color: #ef4444;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .badge-in_progress {
+      background: rgba(245, 158, 11, 0.2);
+      color: #f59e0b;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .badge-resolved {
+      background: rgba(16, 185, 129, 0.2);
+      color: #10b981;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-action {
+      width: 100%;
+      border-radius: 12px;
+      padding: 10px;
+      font-weight: 600;
+      margin-top: 10px;
+    }
+
+    /* Stats Grid */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .stat-box {
+      background: #1e293b;
+      border-radius: 16px;
+      padding: 15px;
+      border: 1px solid #334155;
+      text-align: center;
+    }
+
+    .stat-box .val {
+      font-size: 24px;
+      font-weight: 700;
+      margin: 5px 0 0 0;
+    }
+
+    .stat-box .lbl {
+      font-size: 12px;
+      color: #94a3b8;
+    }
+
+    /* Premium ISP technician workspace: shared styling across all technician pages. */
+    :root {
+      color-scheme: light;
+      --tech-bg: #f4f7fc;
+      --tech-surface: #ffffff;
+      --tech-border: #e2eaf5;
+      --tech-muted: #718096;
+      --tech-blue: #2563eb;
+      --tech-cyan: #0891b2;
+    }
+    html { background: var(--tech-bg); }
+    body {
+      background:
+        radial-gradient(ellipse at 8% 0%, rgba(37,99,235,.06), transparent 34rem), var(--tech-bg);
+      color: #1e293b;
+      letter-spacing: .005em;
+    }
+    .top-nav {
+      background: rgba(255,255,255,.96);
+      border-bottom: 1px solid var(--tech-border);
+      box-shadow: 0 5px 18px rgba(30,64,120,.07);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+    }
+    .top-nav-title { letter-spacing: -.025em; }
+    .top-nav-btn { border-radius: 10px; transition: background .18s ease, color .18s ease; }
+    .top-nav-back { color: #164da4 !important; background: #eaf2ff; border: 1px solid #cfe0fb; flex: 0 0 38px; }
+    .top-nav-back { visibility: visible !important; opacity: 1 !important; color: #164da4 !important; background: #eaf2ff !important; border: 1px solid #cfe0fb !important; position: relative; z-index: 1002; }
+    .top-nav-back i { display: block !important; font-size: 22px; line-height: 1; color: #164da4 !important; }
+    .top-nav-btn:hover { background: rgba(96,165,250,.12); color: #164da4; }
+    .container.py-3 { padding-top: 14px !important; }
+    .t-card, .card, .modal-content, .list-group-item {
+      border-color: var(--tech-border) !important;
+    }
+    .t-card {
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 5px 18px rgba(30,64,120,.06);
+    }
+    .stat-box {
+      background: #ffffff;
+      border-color: var(--tech-border);
+      border-radius: 14px;
+      box-shadow: 0 5px 16px rgba(30,64,120,.05);
+    }
+    .form-control, .form-select, .input-group-text {
+      border-radius: 10px;
+      border-color: rgba(148,163,184,.24) !important;
+    }
+    .form-control:focus, .form-select:focus {
+      border-color: rgba(96,165,250,.8) !important;
+      box-shadow: 0 0 0 .2rem rgba(59,130,246,.13) !important;
+    }
+    .btn { border-radius: 10px; font-weight: 600; transition: transform .16s ease, filter .16s ease; }
+    .btn:active { transform: translateY(1px); }
+    .btn-primary { background: linear-gradient(135deg,#2563eb,#3b82f6); border-color: #3b82f6; }
+    .btn-success { background: linear-gradient(135deg,#059669,#10b981); border-color: #10b981; }
+    .badge { font-weight: 650; letter-spacing: .015em; }
+    .modal-content { border-radius: 18px; box-shadow: 0 20px 60px rgba(30,64,120,.16); }
+    .modal-header, .modal-footer { border-color: var(--tech-border) !important; }
+    a { -webkit-tap-highlight-color: transparent; }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="top-nav">
+    <button type="button" class="top-nav-btn top-nav-back" aria-label="Kembali" title="Kembali"
+      onclick="if (document.referrer && document.referrer.startsWith(window.location.origin)) { window.history.back(); } else { window.location.href='/tech'; }">
+      <i class="bi bi-arrow-left"></i>
+    </button>
+    <h1 class="top-nav-title"><%= title %></h1>
+    <div style="display:flex;gap:4px;align-items:center;flex-shrink:0">
+      <a href="/lang/id" class="top-nav-btn" title="Bahasa Indonesia" style="font-size:12px;font-weight:700">ID</a>
+      <a href="/lang/en" class="top-nav-btn" title="English" style="font-size:12px;font-weight:700">EN</a>
+      <a href="/tech/logout" class="top-nav-btn" aria-label="Logout" onclick="return confirm('<%= t('tech.logout_confirm', 'Apakah Anda yakin ingin logout?') %>')"><i class="bi bi-box-arrow-right"></i></a>
+    </div>
+  </div>
+
+  <div class="container py-3">
+    <% if (typeof msg !=='undefined' && msg) { %>
+      <div class="alert alert-<%= msg.type==='error'?'danger':'success' %> alert-dismissible fade show rounded-4"
+        role="alert" style="font-size: 13px;">
+        <i class="bi bi-<%= msg.type==='error'?'exclamation-circle':'check-circle' %>-fill me-2"></i>
+        <%= msg.text %>
+          <button type="button" class="btn-close btn-close-white" style="font-size: 10px;"
+            data-bs-dismiss="alert"></button>
+      </div>
+      <% } %>
